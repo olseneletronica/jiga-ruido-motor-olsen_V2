@@ -1,0 +1,150 @@
+/* Jiga Ruído Motor V2 — Olsen
+   Tema escuro por padrão (como no V1), com tema claro opcional pelo botão
+   do topo. Todas as cores dos gráficos saem destas variáveis. */
+
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0f1115;
+  --surface: #1a1d24;
+  --surface-2: #22262f;
+  --border: rgba(255, 255, 255, 0.10);
+  --text: #f2f2f0;
+  --text-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --accent: #3987e5;
+
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767;
+  --logo-filter: invert(1) brightness(1.05);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --border: rgba(11, 11, 11, 0.10);
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --accent: #2a78d6;
+
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+
+  --div-neg: #2a78d6; --div-mid: #f0efec; --div-pos: #e34948;
+  --logo-filter: none;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--page);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+h1 { font-size: 1.4rem; margin: 0 0 2px; }
+h2 { font-size: 1.1rem; margin: 32px 0 4px; }
+h3 { font-size: 0.95rem; margin: 22px 0 6px; color: var(--text-2); font-weight: 600; }
+p.sub { color: var(--text-2); margin: 0 0 12px; max-width: 80ch; }
+.muted { color: var(--muted); }
+
+/* Topo ---------------------------------------------------------------- */
+.topbar { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.topbar .title { flex: 1; min-width: 240px; }
+.logo { height: 34px; width: auto; filter: var(--logo-filter); }
+.btn {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 0.9rem;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.fonte-tag {
+  display: inline-block; font-size: 0.78rem; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--text-2); margin-left: 8px; vertical-align: middle;
+}
+
+/* Abas ------------------------------------------------------------------ */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 18px; }
+.tab-btn {
+  background: var(--surface); color: var(--text-2); border: 1px solid var(--border);
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font: inherit;
+}
+.tab-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* Barra de filtros ------------------------------------------------------- */
+.filters {
+  display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+}
+.filters label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.filters .grp { display: inline-flex; gap: 12px; align-items: center; }
+.filters .grp-title { color: var(--muted); font-size: 0.85rem; }
+select {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  padding: 7px 10px; border-radius: 8px; font: inherit; min-width: 280px;
+}
+
+/* Cartão de informações do ensaio ---------------------------------------- */
+.info {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+  margin-top: 14px;
+}
+.info .item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.info .k { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.info .v { font-size: 1.02rem; margin-top: 2px; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.9rem;
+  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--text);
+}
+.badge .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.badge.OK .dot { background: var(--good); }
+.badge.ATENCAO .dot { background: var(--warning); }
+.badge.FALHA_PROVAVEL .dot { background: var(--critical); }
+.badge.SIM .dot { background: var(--serious); }
+.badge.NAO .dot { background: var(--good); }
+.badge.NA .dot { background: var(--muted); }
+
+/* Gráficos --------------------------------------------------------------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-width: 0; }
+.card .chart-box { position: relative; height: 240px; }
+
+/* Tabelas ---------------------------------------------------------------- */
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; }
+th { color: var(--text-2); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+td:first-child, th:first-child { text-align: left; }
+td { font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: none; }
+td.flag { font-weight: 700; }
+td.heat { color: var(--text); }
+.callout {
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--muted);
+  border-radius: 10px; padding: 12px 14px; margin: 12px 0;
+}
+.callout.SIM { border-left-color: var(--serious); }
+.callout.NAO { border-left-color: var(--good); }
+
+.empty {
+  background: var(--surface); border: 1px dashed var(--border); border-radius: 12px;
+  padding: 28px; text-align: center; color: var(--text-2);
+}
+.empty a { color: var(--accent); }
+
+@media (max-width: 560px) {
+  body { padding: 16px; }
+  .grid { grid-template-columns: 1fr; }
+  select { min-width: 0; width: 100%; }
+}

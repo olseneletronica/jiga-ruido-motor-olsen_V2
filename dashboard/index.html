@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-br" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jiga Ruído Motor V2 — Olsen</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <img src="assets/olsen-logo.png" alt="Olsen" class="logo">
+    <div class="title">
+      <h1>Jiga Ruído Motor V2 — Olsen <span id="fonteTag" class="fonte-tag"></span></h1>
+      <p class="sub" style="margin:0">Ensaios a 15 kHz e 20 kHz, nos sentidos horário e anti-horário — corrente, tensão, potência, vibração, giroscópio e áudio (2 microfones).</p>
+    </div>
+    <button class="btn" id="themeBtn" type="button">◐ Tema</button>
+    <button class="btn" type="button" onclick="location.reload()">⟳ Atualizar dados</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="ensaio">Ensaio individual</button>
+    <button class="tab-btn" data-tab="sentido">Horário × Anti-horário</button>
+    <button class="tab-btn" data-tab="comparar">Comparar ensaios</button>
+    <button class="tab-btn" data-tab="geral">Visão geral</button>
+  </nav>
+
+  <div id="loading" class="empty">Carregando dados da planilha…</div>
+  <div id="emptyState" class="empty" style="display:none"></div>
+
+  <main id="app" style="display:none">
+    <!-- Seletor de ensaio compartilhado pelas abas "Ensaio individual" e "Horário × Anti-horário" -->
+    <div id="ensaioBar" class="filters">
+      <span class="grp-title">Ensaio</span>
+      <select id="ensaioSelect"></select>
+      <span id="statusBadge"></span>
+      <span id="assimBadge"></span>
+    </div>
+    <div id="ensaioInfo" class="info"></div>
+
+    <!-- Aba 1 -->
+    <section id="tab-ensaio" class="tab-panel">
+      <h2>Resumo por condição</h2>
+      <p class="sub">Média de cada grandeza nas 4 condições do ensaio. Vibração e giroscópio mostram o desvio-padrão (componente dinâmica), porque a média do acelerômetro carrega a gravidade.</p>
+      <div class="table-wrap"><table id="resumoTable"></table></div>
+
+      <h2>Sinais ao longo do ensaio</h2>
+      <p class="sub">Todos os pontos coletados, uma linha por condição. Cor = frequência, traço = sentido. Clique na legenda para esconder uma condição.</p>
+      <div id="ensaioCharts"></div>
+    </section>
+
+    <!-- Aba 2 -->
+    <section id="tab-sentido" class="tab-panel" style="display:none">
+      <div id="assimCallout" class="callout"></div>
+
+      <h2>Diferença anti-horário − horário, por canal</h2>
+      <p class="sub">Valores positivos = anti-horário maior. Linhas tracejadas = limite configurado. Elétrica compara a média; vibração e giroscópio comparam o desvio-padrão; áudio compara a média em dB.</p>
+      <div class="grid">
+        <div class="card"><div class="chart-box"><canvas id="assimEletrica"></canvas></div></div>
+        <div class="card"><div class="chart-box"><canvas id="assimDinamica"></canvas></div></div>
+        <div class="card"><div class="chart-box"><canvas id="assimAudio"></canvas></div></div>
+      </div>
+
+      <h3>Valores do ensaio selecionado</h3>
+      <div class="table-wrap"><table id="assimTable"></table></div>
+
+      <h2>Todos os ensaios</h2>
+      <p class="sub">Diferença entre sentidos em cada ensaio. Azul = anti-horário menor, vermelho = anti-horário maior; ⚠ = acima do limite.</p>
+      <div id="assimHeatmaps"></div>
+    </section>
+
+    <!-- Aba 3 -->
+    <section id="tab-comparar" class="tab-panel" style="display:none">
+      <p class="sub">Escolha até 8 ensaios e a condição a comparar.</p>
+      <div class="filters" id="cmpFilters">
+        <div class="grp"><span class="grp-title">Frequência</span>
+          <label><input type="radio" name="cmpFreq" value="15000" checked> 15 kHz</label>
+          <label><input type="radio" name="cmpFreq" value="20000"> 20 kHz</label>
+        </div>
+        <div class="grp"><span class="grp-title">Sentido</span>
+          <label><input type="radio" name="cmpSent" value="H" checked> Horário</label>
+          <label><input type="radio" name="cmpSent" value="AH"> Anti-horário</label>
+          <label><input type="radio" name="cmpSent" value="AMBOS"> Ambos</label>
+        </div>
+        <button class="btn" id="cmpClear" type="button">Limpar seleção</button>
+      </div>
+      <div id="cmpChecks" class="filters" style="margin-top:10px"></div>
+      <div id="cmpCharts"></div>
+    </section>
+
+    <!-- Aba 4 -->
+    <section id="tab-geral" class="tab-panel" style="display:none">
+      <h2>Ensaios registrados</h2>
+      <div class="table-wrap"><table id="geralTable"></table></div>
+
+      <h2>Média por ensaio e condição</h2>
+      <p class="sub">Um ponto por ensaio em cada condição. Cor = frequência, marcador = sentido (● horário, ▲ anti-horário).</p>
+      <div id="geralCharts"></div>
+    </section>
+  </main>
+
+<script src="app.js"></script>
+</body>
+</html>
