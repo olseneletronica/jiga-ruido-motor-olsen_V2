@@ -14,7 +14,11 @@ const CONFIG = {
   // Alternativa: cópia do "Publicar na Web" (TSV), atualizada pelo Google a cada ~5 min.
   SHEET_URL:
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/pub?gid=1681403093&single=true&output=tsv",
+  // Aba MOTORES da mesma planilha: ensaio | motor | observacao
+  MOTORES_URL:
+    "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&sheet=MOTORES&headers=1",
   EXEMPLO_URL: "../data/exemplo/raw_exemplo.tsv",
+  EXEMPLO_MOTORES_URL: "../data/exemplo/motores_exemplo.tsv",
   CLASSIF_URL: "../data/classificacao.csv",
   FREQS: [15000, 20000],
   SENTIDOS: ["H", "AH"],
@@ -59,6 +63,7 @@ const CONDICOES = CONFIG.FREQS.flatMap((f) => CONFIG.SENTIDOS.map((s) => ({ s, f
 let rows = [];
 let ensaios = [];          // [{id, inicio, fim, firmware, n, condicoes}]
 let classif = {};          // ensaio -> linha de classificacao.csv
+let motores = {};          // ensaio -> {motor, obs}  (aba MOTORES da planilha)
 let condStats = {};        // `${ensaio}|${s}|${f}` -> {metric: {mean,std,max,min}, n, inicio}
 const charts = {};
 
@@ -157,6 +162,29 @@ async function loadClassif() {
     return Object.fromEntries(data.map((r) => [Number(r.ensaio), r]));
   } catch { return {}; }
 }
+
+// Aba MOTORES: associa cada número de ensaio ao motor testado.
+// Se a aba não existir, o Google pode devolver a primeira aba da planilha —
+// por isso só aceitamos a resposta se ela tiver a coluna "motor".
+async function loadMotores() {
+  try {
+    const url = usandoExemplo ? CONFIG.EXEMPLO_MOTORES_URL : CONFIG.MOTORES_URL;
+    const data = await fetchTable(url, usandoExemplo ? "\t" : ",");
+    if (!("motor" in data[0])) return {};
+    const out = {};
+    data.forEach((r) => {
+      const id = Number(String(r.ensaio).trim());
+      const motor = String(r.motor || "").trim();
+      if (Number.isFinite(id) && motor) out[id] = { motor, obs: String(r.observacao || "").trim() };
+    });
+    return out;
+  } catch { return {}; }
+}
+
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const motorDe = (id) => (motores[id] ? motores[id].motor : "");
+// "Ensaio 3 · BOSCH-0457" (ou só "Ensaio 3" quando o motor ainda não foi cadastrado)
+const ensaioNome = (id) => (motorDe(id) ? `Ensaio ${id} · ${motorDe(id)}` : `Ensaio ${id}`);
 
 function buildIndex() {
   const byEnsaio = new Map();
@@ -268,7 +296,7 @@ function currentEnsaio() {
 
 function populateSelect() {
   const sel = document.getElementById("ensaioSelect");
-  sel.innerHTML = ensaios.map((e) => `<option value="${e.id}">Ensaio ${e.id}</option>`).join("");
+  sel.innerHTML = ensaios.map((e) => `<option value="${e.id}">${esc(ensaioNome(e.id))}</option>`).join("");
   sel.value = ensaios[ensaios.length - 1].id; // abre no ensaio mais recente
   sel.addEventListener("change", renderEnsaioViews);
 }
@@ -292,7 +320,9 @@ function renderInfo(e) {
     : badge("NAO", "Sentidos equivalentes");
 
   const faltando = CONDICOES.filter(({ s, f }) => !e.condicoes.includes(condKey(s, f))).map(({ s, f }) => condLabel(s, f));
+  const m = motores[e.id];
   const items = [
+    ["Motor", m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'],
     ["Início do ensaio", fmtDataHora(e.inicio)],
     ["Fim do ensaio", fmtDataHora(e.fim)],
     ["Duração total", fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)],
@@ -300,6 +330,7 @@ function renderInfo(e) {
     ["Leituras", e.n.toLocaleString("pt-BR")],
     ["Condições", faltando.length ? `${4 - faltando.length}/4 (falta: ${faltando.join(", ")})` : "4/4 completas"],
   ];
+  if (m && m.obs) items.push(["Observação", esc(m.obs)]);
   document.getElementById("ensaioInfo").innerHTML = items.map(([k, v]) => `<div class="item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
 
@@ -350,10 +381,10 @@ function renderSentidoTab(e) {
   const callout = document.getElementById("assimCallout");
   callout.className = `callout ${ra.status}`;
   if (ra.status === "NA") {
-    callout.innerHTML = `<strong>Ensaio ${e.id}:</strong> não tem os dois sentidos na mesma frequência — comparação indisponível.`;
+    callout.innerHTML = `<strong>${esc(ensaioNome(e.id))}:</strong> não tem os dois sentidos na mesma frequência — comparação indisponível.`;
   } else {
     const flags = ra.a.filter((x) => x.flag);
-    callout.innerHTML = `<strong>Ensaio ${e.id} — ${ra.status === "SIM" ? "⚠ assimetria de sentido" : "✓ sentidos equivalentes"}.</strong> `
+    callout.innerHTML = `<strong>${esc(ensaioNome(e.id))} — ${ra.status === "SIM" ? "⚠ assimetria de sentido" : "✓ sentidos equivalentes"}.</strong> `
       + (flags.length
         ? `Canais acima do limite: ${flags.map((x) => `${x.m.label} @ ${freqLabel(x.f)} (${fmtDelta(x.delta, x.m.modo)})`).join("; ")}.`
         : "Nenhum canal acima do limite.")
@@ -416,7 +447,7 @@ function renderHeatmaps() {
     const head = `<tr><th>Ensaio</th>${METRICS.map((m) => `<th title="${m.label}">${short(m)}</th>`).join("")}</tr>`;
     const body = ensaios.map((e) => {
       const a = assimetria(e.id).filter((x) => x.f === f);
-      return `<tr><td>Ensaio ${e.id}</td>${a.map((x) =>
+      return `<tr><td>${esc(ensaioNome(e.id))}</td>${a.map((x) =>
         `<td class="heat ${x.flag ? "flag" : ""}" style="background:${heatColor(x.delta, x.limite)}" title="${x.m.label}: H ${fmtNum(x.h, x.m.dec)} · AH ${fmtNum(x.ah, x.m.dec)}">${x.flag ? "⚠ " : ""}${fmtDelta(x.delta, x.m.modo)}</td>`
       ).join("")}</tr>`;
     }).join("");
@@ -430,7 +461,7 @@ function renderHeatmaps() {
 function renderCmpChecks() {
   const box = document.getElementById("cmpChecks");
   box.innerHTML = ensaios.map((e, i) =>
-    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> Ensaio ${e.id}</label>`
+    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> ${esc(ensaioNome(e.id))}</label>`
   ).join("");
   box.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { enforceMax(); renderComparar(); }));
   document.querySelectorAll("input[name=cmpFreq], input[name=cmpSent]").forEach((r) => r.addEventListener("change", renderComparar));
@@ -467,7 +498,7 @@ function renderComparar() {
         const rs = e.rows.filter((r) => r.sentido === s && r.frequencia_hz === f).sort((a, b) => a.segundo - b.segundo);
         if (!rs.length) return;
         datasets.push({
-          label: sents.length > 1 ? `Ensaio ${id} · ${s}` : `Ensaio ${id}`,
+          label: sents.length > 1 ? `${ensaioNome(id)} · ${s}` : ensaioNome(id),
           data: rs.map((r) => ({ x: r.segundo, y: r[m.key] })),
           borderColor: colorOf(id), backgroundColor: colorOf(id),
           borderWidth: 2, borderDash: s === "AH" ? [6, 4] : [], pointRadius: 0, pointHoverRadius: 4, tension: 0.15,
@@ -486,18 +517,19 @@ function renderComparar() {
 // Aba 4 — Visão geral
 // ============================================================================
 function renderGeral() {
-  const head = `<tr><th>Ensaio</th><th>Início</th><th>Fim</th><th>Duração</th><th>Firmware</th><th>Leituras</th><th>Condições</th><th>Classificação</th><th>Sentidos</th></tr>`;
+  const head = `<tr><th>Ensaio</th><th>Motor</th><th>Observação</th><th>Início</th><th>Fim</th><th>Duração</th><th>Firmware</th><th>Leituras</th><th>Condições</th><th>Classificação</th><th>Sentidos</th></tr>`;
   const body = ensaios.slice().reverse().map((e) => {
     const c = classif[e.id];
     const ra = resumoAssimetria(e.id);
     const st = c ? badge(c.status, STATUS_TXT[c.status] || c.status) : `<span class="muted">—</span>`;
     const as = ra.status === "SIM" ? badge("SIM", `⚠ ${ra.n} canais @ ${freqLabel(ra.f)}`) : ra.status === "NAO" ? badge("NAO", "Equivalentes") : badge("NA", "Incompleto");
-    return `<tr><td>Ensaio ${e.id}</td><td>${fmtDataHora(e.inicio)}</td><td>${fmtDataHora(e.fim)}</td><td>${fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)}</td><td>${e.firmware || "—"}</td><td>${e.n}</td><td>${e.condicoes.length}/4</td><td>${st}</td><td>${as}</td></tr>`;
+    const m = motores[e.id];
+    return `<tr><td>Ensaio ${e.id}</td><td>${m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'}</td><td class="obs">${m && m.obs ? esc(m.obs) : ""}</td><td>${fmtDataHora(e.inicio)}</td><td>${fmtDataHora(e.fim)}</td><td>${fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)}</td><td>${e.firmware || "—"}</td><td>${e.n}</td><td>${e.condicoes.length}/4</td><td>${st}</td><td>${as}</td></tr>`;
   }).join("");
   document.getElementById("geralTable").innerHTML = head + body;
 
   renderMetricGrid("geralCharts", "ger");
-  const labels = ensaios.map((e) => `Ensaio ${e.id}`);
+  const labels = ensaios.map((e) => ensaioNome(e.id));
   METRICS.forEach((m) => {
     const datasets = CONDICOES.map(({ s, f }) => ({
       label: condLabel(s, f),
@@ -512,7 +544,7 @@ function renderGeral() {
     opts.plugins.legend.labels.boxWidth = 9;
     opts.plugins.legend.labels.boxHeight = 9;
     opts.plugins.tooltip.callbacks = {
-      title: (items) => { const e = ensaios[items[0].dataIndex]; return `Ensaio ${e.id}`; },
+      title: (items) => { const e = ensaios[items[0].dataIndex]; return ensaioNome(e.id); },
       label: (c) => `${c.dataset.label}: ${fmtNum(c.raw, m.dec)} ${m.unit}`,
     };
     makeChart(`ger_${m.key}`, { type: "line", data: { labels, datasets }, options: opts });
@@ -575,7 +607,7 @@ async function init() {
   setupTheme();
 
   try {
-    [rows, classif] = await Promise.all([loadRows(), usandoExemplo ? Promise.resolve({}) : loadClassif()]);
+    [rows, classif, motores] = await Promise.all([loadRows(), usandoExemplo ? Promise.resolve({}) : loadClassif(), loadMotores()]);
   } catch (err) {
     showEmpty(`Não foi possível ler a planilha (${err.message}). <br><a href="?fonte=exemplo">Abrir com dados de exemplo</a>`);
     return;

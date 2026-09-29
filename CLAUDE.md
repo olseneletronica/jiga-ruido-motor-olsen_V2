@@ -24,3 +24,6 @@ Google Sheets publicado, e pipeline Python para classificação.
 - GitHub Pages serve a raiz do repo; `index.html` da raiz redireciona para
   `dashboard/`. O dashboard lê `../data/classificacao.csv` (opcional).
 - Repo público (plano Free do GitHub — privado quebraria o Pages).
+- Aba `MOTORES` da planilha (ensaio | motor | observacao) liga o nº do ensaio ao
+  motor. Lida via gviz `sheet=MOTORES`; só é aceita se tiver a coluna `motor`
+  (sem a aba, o Google devolve a primeira aba).

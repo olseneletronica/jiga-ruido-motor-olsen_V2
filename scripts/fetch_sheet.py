@@ -21,8 +21,9 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from config import (
-    DATA_DIR, EXEMPLO_TSV, EXPECTED_COLUMNS, LIVE_URL, NUMERIC_COLUMNS, RAW_PATH,
-    SHEET_URL, normaliza_sentido,
+    DATA_DIR, EXEMPLO_MOTORES_TSV, EXEMPLO_TSV, EXPECTED_COLUMNS, LIVE_URL,
+    MOTORES_PATH, MOTORES_URL, NUMERIC_COLUMNS, RAW_PATH, SHEET_URL,
+    normaliza_sentido,
 )
 
 
@@ -65,6 +66,23 @@ def parse_tabela(texto: str, sep: str) -> pd.DataFrame:
     return df
 
 
+def parse_motores(texto: str, sep: str) -> pd.DataFrame:
+    """Aba MOTORES (ensaio | motor | observacao). Se a aba não existir o Google
+    pode devolver a primeira aba — só aceitamos se houver a coluna 'motor'."""
+    df = pd.read_csv(io.StringIO(texto), sep=sep, dtype=str, keep_default_na=False)
+    df.columns = [c.strip() for c in df.columns]
+    if not {"ensaio", "motor"} <= set(df.columns):
+        return pd.DataFrame(columns=["ensaio", "motor", "observacao"])
+    if "observacao" not in df.columns:
+        df["observacao"] = ""
+    df = df[["ensaio", "motor", "observacao"]].apply(lambda c: c.str.strip())
+    df["ensaio"] = pd.to_numeric(df["ensaio"], errors="coerce")
+    df = df.dropna(subset=["ensaio"])
+    df = df[df["motor"] != ""]
+    df["ensaio"] = df["ensaio"].astype(int)
+    return df.drop_duplicates("ensaio", keep="last")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exemplo", action="store_true",
@@ -85,6 +103,20 @@ def main():
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(RAW_PATH, index=False)
+
+    try:
+        if args.exemplo:
+            motores = parse_motores(EXEMPLO_MOTORES_TSV.read_text(encoding="utf-8"), "\t")
+        else:
+            motores = parse_motores(_baixa_texto(MOTORES_URL), ",")
+    except Exception as err:
+        print(f"[fetch_sheet] Aba MOTORES indisponível ({err}).")
+        motores = parse_motores("ensaio,motor,observacao\n", ",")
+    motores.to_csv(MOTORES_PATH, index=False)
+    sem_motor = sorted(set(df["ensaio"]) - set(motores["ensaio"]))
+    print(f"[fetch_sheet] {len(motores)} motores cadastrados -> {MOTORES_PATH}")
+    if sem_motor:
+        print(f"[fetch_sheet] AVISO: ensaios sem motor na aba MOTORES: {sem_motor}")
 
     desconhecidos = sorted(set(df["sentido"]) - {"H", "AH"})
     print(

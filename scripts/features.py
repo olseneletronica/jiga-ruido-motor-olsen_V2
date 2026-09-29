@@ -12,7 +12,7 @@ Gera:
 """
 import pandas as pd
 
-from config import ENSAIO_PATH, GROUP_KEYS, POINT_PATH, RAW_PATH, SIGNAL_COLUMNS
+from config import ENSAIO_PATH, GROUP_KEYS, MOTORES_PATH, POINT_PATH, RAW_PATH, SIGNAL_COLUMNS
 
 
 def build_condicao_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -55,6 +55,8 @@ def main():
     df = pd.read_csv(RAW_PATH)
     cond_df = build_condicao_features(df)
     ensaio_df = build_ensaio_features(df)
+    if MOTORES_PATH.exists():
+        ensaio_df = pd.read_csv(MOTORES_PATH).merge(ensaio_df, on="ensaio", how="right")
     cond_df.to_csv(POINT_PATH, index=False)
     ensaio_df.to_csv(ENSAIO_PATH, index=False)
     print(f"[features] {len(cond_df)} condições (ensaio+sentido+frequência) -> {POINT_PATH}")

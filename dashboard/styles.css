@@ -68,10 +68,6 @@ p.sub { color: var(--text-2); margin: 0 0 12px; max-width: 80ch; }
   padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 0.9rem;
 }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
-.fonte-tag {
-  display: inline-block; font-size: 0.78rem; padding: 2px 8px; border-radius: 999px;
-  border: 1px solid var(--border); color: var(--text-2); margin-left: 8px; vertical-align: middle;
-}
 
 /* Abas ------------------------------------------------------------------ */
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 18px; }
@@ -129,6 +125,7 @@ td:first-child, th:first-child { text-align: left; }
 td { font-variant-numeric: tabular-nums; }
 tr:last-child td { border-bottom: none; }
 td.flag { font-weight: 700; }
+td.obs { white-space: normal; text-align: left; min-width: 160px; max-width: 320px; color: var(--text-2); }
 td.heat { color: var(--text); }
 .callout {
   background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--muted);

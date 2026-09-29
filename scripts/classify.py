@@ -15,7 +15,7 @@ import pandas as pd
 
 from baseline import REF_COLUMNS, chave
 from sentido import resumo_por_ensaio
-from config import BASELINE_PATH, CLASSIF_PATH, POINT_PATH, SENTIDO_PATH
+from config import BASELINE_PATH, CLASSIF_PATH, MOTORES_PATH, POINT_PATH, SENTIDO_PATH
 
 # Acima de quantos desvios-padrão da referência um canal conta como suspeito.
 Z_THRESHOLD = 3.0
@@ -77,6 +77,9 @@ def main():
         sent = pd.read_csv(SENTIDO_PATH)
         if not sent.empty:
             resumo = resumo.merge(resumo_por_ensaio(sent), on="ensaio", how="left")
+
+    if MOTORES_PATH.exists():
+        resumo = pd.read_csv(MOTORES_PATH)[["ensaio", "motor"]].merge(resumo, on="ensaio", how="right")
 
     resumo.to_csv(CLASSIF_PATH, index=False)
     print(f"[classify] {len(resumo)} ensaios classificados -> {CLASSIF_PATH}")

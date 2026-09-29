@@ -32,6 +32,26 @@ Cada linha é uma leitura (1 por segundo). Roteiro esperado de cada ensaio:
 **15 kHz H → 15 kHz AH → 20 kHz H → 20 kHz AH** (a ordem não é obrigatória;
 o que importa é ter as 4 condições).
 
+### Aba MOTORES — qual motor foi testado em cada ensaio
+
+Crie na mesma planilha uma aba chamada **`MOTORES`** (exatamente assim),
+com este cabeçalho na linha 1:
+
+| ensaio | motor | observacao |
+|---|---|---|
+| 1 | BOSCH-0451 | Lote 2026-09 |
+| 2 | BOSCH-0452 | |
+
+- `ensaio`: o mesmo número gravado pela jiga.
+- `motor`: identificação do motor (nº de série, etiqueta, etc.).
+- `observacao`: opcional (lote, origem, defeito relatado…).
+
+O dashboard mostra "Ensaio 3 · BOSCH-0453" em todos os seletores, legendas
+e tabelas, além de cartões "Motor" e "Observação" no ensaio individual.
+Enquanto um ensaio não for cadastrado, aparece "não cadastrado". O pipeline
+salva a aba em `data/motores.csv` e inclui o motor em
+`features_por_ensaio.csv` e `classificacao.csv`.
+
 ### Dicionário de colunas
 
 | Coluna | Descrição |
