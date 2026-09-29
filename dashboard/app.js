@@ -243,7 +243,7 @@ function currentEnsaio() {
 
 function populateSelect() {
   const sel = document.getElementById("ensaioSelect");
-  sel.innerHTML = ensaios.map((e) => `<option value="${e.id}">Ensaio ${e.id} — ${fmtDataHoraCurta(e.inicio)}</option>`).join("");
+  sel.innerHTML = ensaios.map((e) => `<option value="${e.id}">Ensaio ${e.id}</option>`).join("");
   sel.value = ensaios[ensaios.length - 1].id; // abre no ensaio mais recente
   sel.addEventListener("change", renderEnsaioViews);
 }
@@ -388,10 +388,10 @@ function heatColor(delta, limite) {
 function renderHeatmaps() {
   const short = (m) => m.label.replace("Vibração ", "Vib. ").replace("Giroscópio ", "Giro ").replace("resultante", "result.");
   document.getElementById("assimHeatmaps").innerHTML = CONFIG.FREQS.map((f) => {
-    const head = `<tr><th>Ensaio</th><th>Início</th>${METRICS.map((m) => `<th title="${m.label}">${short(m)}</th>`).join("")}</tr>`;
+    const head = `<tr><th>Ensaio</th>${METRICS.map((m) => `<th title="${m.label}">${short(m)}</th>`).join("")}</tr>`;
     const body = ensaios.map((e) => {
       const a = assimetria(e.id).filter((x) => x.f === f);
-      return `<tr><td>Ensaio ${e.id}</td><td class="muted">${fmtDataHoraCurta(e.inicio)}</td>${a.map((x) =>
+      return `<tr><td>Ensaio ${e.id}</td>${a.map((x) =>
         `<td class="heat ${x.flag ? "flag" : ""}" style="background:${heatColor(x.delta, x.limite)}" title="${x.m.label}: H ${fmtNum(x.h, x.m.dec)} · AH ${fmtNum(x.ah, x.m.dec)}">${x.flag ? "⚠ " : ""}${fmtDelta(x.delta, x.m.modo)}</td>`
       ).join("")}</tr>`;
     }).join("");
@@ -405,7 +405,7 @@ function renderHeatmaps() {
 function renderCmpChecks() {
   const box = document.getElementById("cmpChecks");
   box.innerHTML = ensaios.map((e, i) =>
-    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> Ensaio ${e.id} <span class="muted">(${fmtDataHoraCurta(e.inicio)})</span></label>`
+    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> Ensaio ${e.id}</label>
   ).join("");
   box.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { enforceMax(); renderComparar(); }));
   document.querySelectorAll("input[name=cmpFreq], input[name=cmpSent]").forEach((r) => r.addEventListener("change", renderComparar));
@@ -487,7 +487,7 @@ function renderGeral() {
     opts.plugins.legend.labels.boxWidth = 9;
     opts.plugins.legend.labels.boxHeight = 9;
     opts.plugins.tooltip.callbacks = {
-      title: (items) => { const e = ensaios[items[0].dataIndex]; return `Ensaio ${e.id} — ${fmtDataHoraCurta(e.inicio)}`; },
+      title: (items) => { const e = ensaios[items[0].dataIndex]; return `Ensaio ${e.id}`; },
       label: (c) => `${c.dataset.label}: ${fmtNum(c.raw, m.dec)} ${m.unit}`,
     };
     makeChart(`ger_${m.key}`, { type: "line", data: { labels, datasets }, options: opts });
@@ -548,7 +548,6 @@ function showEmpty(html) {
 async function init() {
   setupTabs();
   setupTheme();
-  document.getElementById("fonteTag").textContent = usandoExemplo ? "dados de exemplo" : "planilha ao vivo";
 
   try {
     [rows, classif] = await Promise.all([loadRows(), usandoExemplo ? Promise.resolve({}) : loadClassif()]);

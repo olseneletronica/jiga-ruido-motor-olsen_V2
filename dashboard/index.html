@@ -12,8 +12,9 @@
   <header class="topbar">
     <img src="assets/olsen-logo.png" alt="Olsen" class="logo">
     <div class="title">
-      <h1>Jiga Ruído Motor V2 — Olsen <span id="fonteTag" class="fonte-tag"></span></h1>
-      <p class="sub" style="margin:0">Ensaios a 15 kHz e 20 kHz, nos sentidos horário e anti-horário — corrente, tensão, potência, vibração, giroscópio e áudio (2 microfones).</p>
+      <h1>Jiga Ruído Motor V2 — Olsen</h1>
+      <p class="sub" style="margin:0"><strong>Ensaios:</strong> acionamento do motor em 15 kHz e 20 kHz, nos sentidos horário e anti-horário.<br>
+      <strong>Sensores:</strong> corrente, tensão, potência, vibração, giroscópio e áudio (2 microfones).</p>
     </div>
     <button class="btn" id="themeBtn" type="button">◐ Tema</button>
     <button class="btn" type="button" onclick="location.reload()">⟳ Atualizar dados</button>
@@ -42,11 +43,10 @@
     <!-- Aba 1 -->
     <section id="tab-ensaio" class="tab-panel">
       <h2>Resumo por condição</h2>
-      <p class="sub">Média de cada grandeza nas 4 condições do ensaio. Vibração e giroscópio mostram o desvio-padrão (componente dinâmica), porque a média do acelerômetro carrega a gravidade.</p>
-      <div class="table-wrap"><table id="resumoTable"></table></div>
+      <p class="sub">Resumo da média de cada grandeza nas 4 condições do ensaio.<br>
+      <span class="muted">Obs.: vibração e giroscópio mostram o desvio-padrão (componente dinâmica).</span></p>      <div class="table-wrap"><table id="resumoTable"></table></div>
 
       <h2>Sinais ao longo do ensaio</h2>
-      <p class="sub">Todos os pontos coletados, uma linha por condição. Cor = frequência, traço = sentido. Clique na legenda para esconder uma condição.</p>
       <div id="ensaioCharts"></div>
     </section>
 
