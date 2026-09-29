@@ -2,8 +2,8 @@
 fetch_sheet.py — baixa a planilha e salva um snapshot limpo em
 data/raw_ensaios.csv.
 
-- Fonte principal: leitura ao vivo (CSV via gviz). Se falhar, usa a cópia
-  do "Publicar na Web" (TSV, atualizada pelo Google a cada ~5 min).
+- Fonte: leitura ao vivo da aba DADOS (CSV via gviz, selecionada pelo nome).
+- Aba MOTORES: pelo Apps Script (?acao=listar); gviz só como reserva.
 - Separador decimal: a planilha está em locale BR, então os números chegam
   com vírgula ("31,779"). Aqui tudo é convertido para ponto antes de salvar.
 - `sentido` é normalizado para "H" (horário) / "AH" (anti-horário).
@@ -14,6 +14,7 @@ Uso:
 """
 import argparse
 import io
+import json
 import time
 import urllib.request
 from datetime import datetime, timezone
@@ -22,7 +23,7 @@ import pandas as pd
 
 from config import (
     DATA_DIR, EXEMPLO_MOTORES_TSV, EXEMPLO_TSV, EXPECTED_COLUMNS, LIVE_URL,
-    MOTORES_PATH, MOTORES_URL, NUMERIC_COLUMNS, RAW_PATH, SHEET_URL,
+    MOTORES_API_URL, MOTORES_PATH, MOTORES_URL, NUMERIC_COLUMNS, RAW_PATH,
     normaliza_sentido,
 )
 
@@ -83,7 +84,7 @@ def parse_motores(texto: str, sep: str) -> pd.DataFrame:
     df = df[COLS_MOTORES].apply(lambda c: c.str.strip())
     df["ensaio"] = pd.to_numeric(df["ensaio"], errors="coerce")
     df = df.dropna(subset=["ensaio"])
-    df = df[df["motor"] != ""]
+    df = df[(df["motor"] != "") | (df["observacao"] != "") | (df["classificacao"] != "")]
     df["ensaio"] = df["ensaio"].astype(int)
     return df.drop_duplicates("ensaio", keep="last")
 
@@ -98,13 +99,8 @@ def main():
         df = parse_tabela(EXEMPLO_TSV.read_text(encoding="utf-8"), "\t")
         origem = str(EXEMPLO_TSV)
     else:
-        try:
-            df = parse_tabela(_baixa_texto(LIVE_URL), ",")
-            origem = "planilha (ao vivo)"
-        except Exception as err:  # sem compartilhamento público, rede, etc.
-            print(f"[fetch_sheet] Leitura ao vivo falhou ({err}); usando a cópia publicada.")
-            df = parse_tabela(_baixa_texto(SHEET_URL), "\t")
-            origem = "planilha (cópia publicada)"
+        df = parse_tabela(_baixa_texto(LIVE_URL), ",")
+        origem = "planilha (aba DADOS, ao vivo)"
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(RAW_PATH, index=False)
@@ -113,7 +109,15 @@ def main():
         if args.exemplo:
             motores = parse_motores(EXEMPLO_MOTORES_TSV.read_text(encoding="utf-8"), "\t")
         else:
-            motores = parse_motores(_baixa_texto(MOTORES_URL), ",")
+            try:
+                r = json.loads(_baixa_texto(MOTORES_API_URL))
+                if not (r.get("ok") and isinstance(r.get("linhas"), list)):
+                    raise ValueError("Apps Script sem 'listar' (reimplante a nova versão)")
+                linhas = pd.DataFrame(r["linhas"], columns=COLS_MOTORES).fillna("")
+                motores = parse_motores(linhas.to_csv(index=False), ",")
+            except Exception as err:
+                print(f"[fetch_sheet] MOTORES via Apps Script falhou ({err}); usando gviz.")
+                motores = parse_motores(_baixa_texto(MOTORES_URL), ",")
     except Exception as err:
         print(f"[fetch_sheet] Aba MOTORES indisponível ({err}).")
         motores = parse_motores(",".join(COLS_MOTORES) + "\n", ",")

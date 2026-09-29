@@ -8,8 +8,12 @@ Google Sheets publicado, e pipeline Python para classificação.
   Script estão fora por enquanto.
 - Ensaio V2 = 4 condições: {15 kHz, 20 kHz} × {horário "H", anti-horário "AH"}.
   A chave de condição é `"{sentido}_{frequencia_hz}"` (ex: `AH_20000`).
-- Fonte de dados: leitura ao vivo via `gviz/tq?tqx=out:csv` (CSV com aspas), com a
-  cópia "Publicar na Web" em TSV como fallback. Vírgula decimal (locale BR).
+- Fonte de dados: leitura ao vivo da aba DADOS via `gviz/tq?tqx=out:csv&sheet=DADOS`
+  (pelo NOME, nunca por gid — o gid 1681403093 é uma aba parada). Sem fallback
+  para "Publicar na Web": ele apontava para a aba errada. Vírgula decimal.
+- MOTORES é lida pelo Apps Script (`?acao=listar`, getDisplayValues); gviz só
+  de reserva (gviz apaga valores de tipos misturados na mesma coluna).
+- "Atualizar dados" recarrega os dados sem recarregar a página (`atualizarDados()`).
 - `scripts/config.py` é a fonte única de colunas, frequências e limites.
   O bloco `CONFIG` e `METRICS` em `dashboard/app.js` espelham esses valores —
   ao mudar um, mudar o outro.
@@ -33,3 +37,6 @@ Google Sheets publicado, e pipeline Python para classificação.
   (`apps-script/cadastro_motores.gs`, app da Web). URL em
   `CONFIG.MOTORES_WRITE_URL`; senha em Propriedades do script (`TOKEN`),
   nunca no repositório. POST com `text/plain` para evitar preflight de CORS.
+- `apps-script/receber_dados_esp32.gs` é só uma cópia de registro do script
+  vinculado à planilha (recebe o ESP32, grava na aba DADOS, `sentido` =
+  HORARIO/ANTIHORARIO, 20 s por etapa). O original vive na planilha.

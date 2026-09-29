@@ -17,7 +17,10 @@
       <strong>Sensores:</strong> corrente, tensão, potência, vibração, giroscópio e áudio (2 microfones).</p>
     </div>
     <button class="btn" id="themeBtn" type="button">◐ Tema</button>
-    <button class="btn" type="button" onclick="location.reload()">⟳ Atualizar dados</button>
+    <div class="refresh">
+      <button class="btn" type="button" id="refreshBtn">⟳ Atualizar dados</button>
+      <span id="dataStamp" class="stamp"></span>
+    </div>
   </header>
 
   <nav class="tabs">

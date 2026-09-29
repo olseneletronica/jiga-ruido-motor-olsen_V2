@@ -21,12 +21,15 @@ do ESP32 e Apps Script da planilha ficam fora do escopo por enquanto.
 ## Fonte de dados
 
 - Planilha: https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/edit?gid=1681403093
-- **Leitura ao vivo** (fonte principal do dashboard e do pipeline), que exige
-  o compartilhamento "Qualquer pessoa com o link: Leitor":
-  `https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&gid=1681403093&headers=1`
-- **Cópia publicada (TSV)**, usada automaticamente se a leitura ao vivo
-  falhar. O Google a atualiza a cada ~5 min:
-  `https://docs.google.com/spreadsheets/d/e/2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/pub?gid=1681403093&single=true&output=tsv`
+- **Leitura ao vivo da aba `DADOS`** (onde o ESP32 grava), selecionada pelo
+  **nome** da aba. Exige o compartilhamento "Qualquer pessoa com o link: Leitor":
+  `https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&sheet=DADOS&headers=1`
+
+> Não use links com `gid=`: se a aba for recriada, o gid muda e o link
+> passa a ler uma aba parada. Foi o que aconteceu com o `gid=1681403093`.
+
+O botão **⟳ Atualizar dados** busca a planilha de novo sem recarregar a
+página (mantém aba, ensaio e seleção) e mostra a hora da última leitura.
 
 Cada linha é uma leitura (1 por segundo). Roteiro esperado de cada ensaio:
 **15 kHz H → 15 kHz AH → 20 kHz H → 20 kHz AH** (a ordem não é obrigatória;
@@ -73,7 +76,12 @@ no formulário; há a opção de lembrar a senha só naquele navegador. Sem a
 senha certa, o script recusa a gravação.
 
 Ao alterar o `.gs` depois, use **Implantar → Gerenciar implantações →
-editar (lápis) → Nova versão**, para manter a mesma URL.
+editar (lápis) → Versão: Nova versão → Implantar**, para manter a mesma URL.
+
+O mesmo script também **lê** a aba MOTORES para o dashboard
+(`.../exec?acao=listar`), devolvendo o texto exato das células. A leitura
+pelo `gviz` fica só de reserva, porque o gviz apaga valores quando uma
+coluna mistura números e textos (ex: motor `5` e motor `BOSCH-0451`).
 
 ### Dicionário de colunas
 
@@ -109,6 +117,7 @@ dashboard/
   assets/olsen-logo.png
 apps-script/
   cadastro_motores.gs      grava o cadastro do motor na aba MOTORES (formulário do dashboard)
+  receber_dados_esp32.gs   SÓ REGISTRO: cópia do script vinculado à planilha que recebe o ESP32 (aba DADOS)
 scripts/
   config.py                colunas, frequências, limites — fonte única de configuração
   fetch_sheet.py           baixa a planilha (TSV) -> data/raw_ensaios.csv

@@ -81,7 +81,32 @@ function doPost(e) {
   }
 }
 
-// Permite testar a URL no navegador (GET): deve responder {"ok":true,...}
-function doGet() {
-  return resposta_({ ok: true, servico: "cadastro-motores", aba: ABA });
+// GET
+//   .../exec                 -> {"ok":true,"servico":"cadastro-motores",...} (teste)
+//   .../exec?acao=listar     -> todas as linhas da aba MOTORES, com o TEXTO
+//                               exato de cada célula (getDisplayValues). Evita o
+//                               problema do gviz, que apaga valores de tipos
+//                               misturados na mesma coluna. Não exige senha:
+//                               a planilha já é pública para leitura.
+function doGet(e) {
+  const acao = e && e.parameter && e.parameter.acao;
+  if (acao !== "listar") {
+    return resposta_({ ok: true, servico: "cadastro-motores", aba: ABA, versao: 2 });
+  }
+  try {
+    const sh = SpreadsheetApp.openById(PLANILHA_ID).getSheetByName(ABA);
+    if (!sh || sh.getLastRow() < 1) return resposta_({ ok: true, linhas: [] });
+    const valores = sh.getDataRange().getDisplayValues();
+    const cab = valores[0].map(function (c) { return String(c).trim(); });
+    const linhas = valores.slice(1)
+      .filter(function (l) { return String(l[0]).trim() !== ""; })
+      .map(function (l) {
+        const o = {};
+        cab.forEach(function (c, i) { if (c) o[c] = l[i]; });
+        return o;
+      });
+    return resposta_({ ok: true, linhas: linhas });
+  } catch (err) {
+    return resposta_({ ok: false, erro: String(err) });
+  }
 }

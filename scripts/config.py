@@ -21,25 +21,25 @@ EXEMPLO_TSV = EXEMPLO_DIR / "raw_exemplo.tsv"
 EXEMPLO_MOTORES_TSV = EXEMPLO_DIR / "motores_exemplo.tsv"
 MOTORES_PATH = DATA_DIR / "motores.csv"
 
-# Leitura AO VIVO da planilha (exige "Qualquer pessoa com o link: Leitor").
+# Leitura AO VIVO da aba DADOS, pelo nome (exige "Qualquer pessoa com o link: Leitor").
 # Devolve CSV com todos os campos entre aspas e vírgula decimal (locale BR).
 LIVE_URL = (
     "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/"
-    "gviz/tq?tqx=out:csv&gid=1681403093&headers=1"
+    "gviz/tq?tqx=out:csv&sheet=DADOS&headers=1"
 )
 
-# Aba MOTORES da mesma planilha: associa o número do ensaio ao motor testado.
-# Colunas: ensaio | motor | observacao
+# Apps Script de cadastro (apps-script/cadastro_motores.gs). Com ?acao=listar
+# devolve a aba MOTORES em JSON com o texto exato das células.
+MOTORES_API_URL = (
+    "https://script.google.com/macros/s/"
+    "AKfycbyFvojPXspkoJNJOpHwEKKKehGACw-Kj54iGgbK0b1dLtfzMvk_2lazoiv3F3WAHYADag/exec?acao=listar"
+)
+
+# Reserva (gviz) para a aba MOTORES: associa o número do ensaio ao motor testado.
+# Colunas: ensaio | motor | observacao | classificacao | atualizado_em
 MOTORES_URL = (
     "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/"
     "gviz/tq?tqx=out:csv&sheet=MOTORES&headers=1"
-)
-
-# Alternativa: cópia do "Publicar na Web" em TSV (Google atualiza a cada ~5 min).
-SHEET_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/"
-    "pub?gid=1681403093&single=true&output=tsv"
 )
 
 # Cabeçalho exato da planilha V2 (ordem incluída).

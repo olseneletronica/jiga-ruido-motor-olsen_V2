@@ -1,4 +1,4 @@
-﻿// Jiga Ruído Motor V2 — Olsen — dashboard
+// Jiga Ruído Motor V2 — Olsen — dashboard
 // Lê a planilha publicada (TSV) direto do Google. Com ?fonte=exemplo usa os
 // dados sintéticos de data/exemplo/raw_exemplo.tsv.
 // A classificação (data/classificacao.csv) é opcional: vem do pipeline Python.
@@ -7,14 +7,16 @@
 // CONFIG — manter sincronizado com scripts/config.py
 // ============================================================================
 const CONFIG = {
-  // Fonte principal: leitura AO VIVO da planilha (exige compartilhamento
-  // "Qualquer pessoa com o link: Leitor"). Devolve CSV com campos entre aspas.
+  // Leitura AO VIVO da aba DADOS (onde o ESP32 grava). Exige compartilhamento
+  // "Qualquer pessoa com o link: Leitor". Devolve CSV com campos entre aspas.
+  // Selecionada pelo NOME da aba (sheet=DADOS), não pelo gid: se a aba for
+  // recriada, o gid muda e o link antigo passaria a ler uma aba parada.
   LIVE_URL:
-    "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&gid=1681403093&headers=1",
-  // Alternativa: cópia do "Publicar na Web" (TSV), atualizada pelo Google a cada ~5 min.
-  SHEET_URL:
-    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/pub?gid=1681403093&single=true&output=tsv",
-  // Aba MOTORES da mesma planilha: ensaio | motor | observacao | classificacao | atualizado_em
+    "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&sheet=DADOS&headers=1",
+  // Aba MOTORES (ensaio | motor | observacao | classificacao | atualizado_em).
+  // Lida primeiro pelo Apps Script (?acao=listar), que devolve o texto exato das
+  // células; o gviz abaixo é só reserva — ele "adivinha" o tipo de cada coluna e
+  // apaga valores que não se encaixam (ex: motor "5" misturado com "BOSCH-…").
   MOTORES_URL:
     "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&sheet=MOTORES&headers=1",
   // URL do app da Web do Apps Script que grava na aba MOTORES
@@ -141,12 +143,7 @@ async function loadRows() {
   if (usandoExemplo) {
     parsed = await fetchTable(CONFIG.EXEMPLO_URL, "\t");
   } else {
-    try {
-      parsed = await fetchTable(CONFIG.LIVE_URL, ",");
-    } catch (err) {
-      console.warn("Leitura ao vivo falhou, usando a cópia publicada:", err.message);
-      parsed = await fetchTable(CONFIG.SHEET_URL, "\t");
-    }
+    parsed = await fetchTable(CONFIG.LIVE_URL, ",");
   }
   return parsed.map((r) => {
     const o = { timestamp: r.timestamp, firmware: r.firmware, sentido: normalizaSentido(r.sentido) };
@@ -169,18 +166,40 @@ async function loadClassif() {
 // Aba MOTORES: associa cada número de ensaio ao motor testado.
 // Se a aba não existir, o Google pode devolver a primeira aba da planilha —
 // por isso só aceitamos a resposta se ela tiver a coluna "motor".
+function motoresFromRows(data) {
+  const out = {};
+  data.forEach((r) => {
+    const id = Number(String(r.ensaio ?? "").trim());
+    const m = {
+      motor: String(r.motor ?? "").trim(),
+      obs: String(r.observacao ?? "").trim(),
+      classe: String(r.classificacao ?? "").trim(),
+    };
+    // Mantém o cadastro mesmo sem nome de motor (ex: só classificação).
+    if (Number.isInteger(id) && id > 0 && (m.motor || m.obs || m.classe)) out[id] = m;
+  });
+  return out;
+}
+
 async function loadMotores() {
+  if (usandoExemplo) {
+    try { return motoresFromRows(await fetchTable(CONFIG.EXEMPLO_MOTORES_URL, "\t")); } catch { return {}; }
+  }
+  // 1) Apps Script: texto exato das células, sem adivinhação de tipo.
+  if (CONFIG.MOTORES_WRITE_URL) {
+    try {
+      const resp = await fetch(withBuster(`${CONFIG.MOTORES_WRITE_URL}?acao=listar`));
+      const r = await resp.json();
+      if (r.ok && Array.isArray(r.linhas)) return motoresFromRows(r.linhas);
+      // Script antigo (sem "listar") responde ok sem "linhas": cai no gviz.
+    } catch (err) {
+      console.warn("Leitura da aba MOTORES pelo Apps Script falhou:", err.message);
+    }
+  }
+  // 2) Reserva: gviz.
   try {
-    const url = usandoExemplo ? CONFIG.EXEMPLO_MOTORES_URL : CONFIG.MOTORES_URL;
-    const data = await fetchTable(url, usandoExemplo ? "\t" : ",");
-    if (!("motor" in data[0])) return {};
-    const out = {};
-    data.forEach((r) => {
-      const id = Number(String(r.ensaio).trim());
-      const motor = String(r.motor || "").trim();
-      if (Number.isFinite(id) && motor) out[id] = { motor, obs: String(r.observacao || "").trim(), classe: String(r.classificacao || "").trim() };
-    });
-    return out;
+    const data = await fetchTable(CONFIG.MOTORES_URL, ",");
+    return "motor" in data[0] ? motoresFromRows(data) : {};
   } catch { return {}; }
 }
 
@@ -301,7 +320,8 @@ function fillSelectOptions() {
   const sel = document.getElementById("ensaioSelect");
   const atual = sel.value;
   sel.innerHTML = ensaios.map((e) => `<option value="${e.id}">${esc(ensaioNome(e.id))}</option>`).join("");
-  sel.value = atual || ensaios[ensaios.length - 1].id; // abre no ensaio mais recente
+  const existe = ensaios.some((e) => String(e.id) === atual);
+  sel.value = existe ? atual : ensaios[ensaios.length - 1].id; // abre no ensaio mais recente
 }
 
 function populateSelect() {
@@ -541,18 +561,27 @@ function renderHeatmaps() {
 // ============================================================================
 // Aba 3 — Comparar ensaios
 // ============================================================================
+// Monta os checkboxes. Na primeira vez marca os 3 ensaios mais recentes;
+// ao atualizar os dados, mantém o que já estava marcado.
 function renderCmpChecks() {
   const box = document.getElementById("cmpChecks");
-  box.innerHTML = ensaios.map((e, i) =>
-    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> ${esc(ensaioNome(e.id))}</label>`
-  ).join("");
+  const antes = box.querySelectorAll("input").length
+    ? new Set([...box.querySelectorAll("input:checked")].map((i) => Number(i.value)))
+    : null;
+  box.innerHTML = ensaios.map((e, i) => {
+    const on = antes ? antes.has(e.id) : i >= ensaios.length - 3;
+    return `<label><input type="checkbox" value="${e.id}" ${on ? "checked" : ""}> ${esc(ensaioNome(e.id))}</label>`;
+  }).join("");
   box.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { enforceMax(); renderComparar(); }));
+  enforceMax();
+}
+
+function setupCmpControls() {
   document.querySelectorAll("input[name=cmpFreq], input[name=cmpSent]").forEach((r) => r.addEventListener("change", renderComparar));
   document.getElementById("cmpClear").addEventListener("click", () => {
-    box.querySelectorAll("input").forEach((cb) => (cb.checked = false));
+    document.querySelectorAll("#cmpChecks input").forEach((cb) => (cb.checked = false));
     enforceMax(); renderComparar();
   });
-  enforceMax();
 }
 
 // Atualiza só os nomes dos checkboxes (ex: depois de cadastrar um motor),
@@ -695,14 +724,48 @@ function showEmpty(html) {
   el.innerHTML = html;
 }
 
+function carregarTudo() {
+  return Promise.all([loadRows(), usandoExemplo ? Promise.resolve({}) : loadClassif(), loadMotores()]);
+}
+
+function setStamp(texto, erro = false) {
+  const el = document.getElementById("dataStamp");
+  el.textContent = texto;
+  el.classList.toggle("erro", erro);
+}
+const horaAgora = () => new Date().toLocaleTimeString("pt-BR");
+
+// Botão "Atualizar dados": busca a planilha de novo SEM recarregar a página,
+// mantendo aba, ensaio selecionado e ensaios marcados na comparação.
+async function atualizarDados() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  setStamp("Atualizando…");
+  try {
+    const [r, c, m] = await carregarTudo();
+    if (!r.length) throw new Error("planilha sem leituras válidas");
+    rows = r; classif = c; motores = m;
+    buildIndex();
+    fillSelectOptions();
+    renderCmpChecks();
+    renderActive();
+    setStamp(`Dados de ${horaAgora()} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
+  } catch (err) {
+    setStamp(`Falha ao atualizar (${err.message}) — mostrando os dados anteriores`, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function init() {
   setupTabs();
   setupTheme();
+  document.getElementById("refreshBtn").addEventListener("click", atualizarDados);
 
   try {
-    [rows, classif, motores] = await Promise.all([loadRows(), usandoExemplo ? Promise.resolve({}) : loadClassif(), loadMotores()]);
+    [rows, classif, motores] = await carregarTudo();
   } catch (err) {
-    showEmpty(`Não foi possível ler a planilha (${err.message}). <br><a href="?fonte=exemplo">Abrir com dados de exemplo</a>`);
+    showEmpty(`Não foi possível ler a planilha (${esc(err.message)}). <br><a href="?fonte=exemplo">Abrir com dados de exemplo</a>`);
     return;
   }
   if (!rows.length) {
@@ -715,8 +778,10 @@ async function init() {
   document.getElementById("app").style.display = "";
   populateSelect();
   renderCmpChecks();
+  setupCmpControls();
   setupMotorForm();
   renderActive();
+  setStamp(`Dados de ${horaAgora()} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
 }
 
 init();
