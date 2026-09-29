@@ -1,4 +1,4 @@
-// Jiga Ruído Motor V2 — Olsen — dashboard
+﻿// Jiga Ruído Motor V2 — Olsen — dashboard
 // Lê a planilha publicada (TSV) direto do Google. Com ?fonte=exemplo usa os
 // dados sintéticos de data/exemplo/raw_exemplo.tsv.
 // A classificação (data/classificacao.csv) é opcional: vem do pipeline Python.
@@ -6,7 +6,7 @@
 // ============================================================================
 // CONFIG — manter sincronizado com scripts/config.py
 // ============================================================================
-const CONFIG = {
+const VERSAO = "2026.09.29-1"; const CONFIG = {
   // Leitura AO VIVO da aba DADOS (onde o ESP32 grava). Exige compartilhamento
   // "Qualquer pessoa com o link: Leitor". Devolve CSV com campos entre aspas.
   // Selecionada pelo NOME da aba (sheet=DADOS), não pelo gid: se a aba for
@@ -730,7 +730,7 @@ function carregarTudo() {
 
 function setStamp(texto, erro = false) {
   const el = document.getElementById("dataStamp");
-  el.textContent = texto;
+  el.textContent = `${texto} - v${VERSAO}`;
   el.classList.toggle("erro", erro);
 }
 const horaAgora = () => new Date().toLocaleTimeString("pt-BR");
