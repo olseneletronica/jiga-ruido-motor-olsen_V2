@@ -79,7 +79,7 @@ def main():
             resumo = resumo.merge(resumo_por_ensaio(sent), on="ensaio", how="left")
 
     if MOTORES_PATH.exists():
-        resumo = pd.read_csv(MOTORES_PATH)[["ensaio", "motor"]].merge(resumo, on="ensaio", how="right")
+        resumo = pd.read_csv(MOTORES_PATH)[["ensaio", "motor", "classificacao"]].merge(resumo, on="ensaio", how="right")
 
     resumo.to_csv(CLASSIF_PATH, index=False)
     print(f"[classify] {len(resumo)} ensaios classificados -> {CLASSIF_PATH}")

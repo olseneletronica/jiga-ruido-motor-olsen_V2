@@ -66,16 +66,21 @@ def parse_tabela(texto: str, sep: str) -> pd.DataFrame:
     return df
 
 
+COLS_MOTORES = ["ensaio", "motor", "observacao", "classificacao", "atualizado_em"]
+
+
 def parse_motores(texto: str, sep: str) -> pd.DataFrame:
-    """Aba MOTORES (ensaio | motor | observacao). Se a aba não existir o Google
+    """Aba MOTORES (ensaio | motor | observacao | classificacao | atualizado_em).
+    Se a aba não existir o Google
     pode devolver a primeira aba — só aceitamos se houver a coluna 'motor'."""
     df = pd.read_csv(io.StringIO(texto), sep=sep, dtype=str, keep_default_na=False)
     df.columns = [c.strip() for c in df.columns]
     if not {"ensaio", "motor"} <= set(df.columns):
-        return pd.DataFrame(columns=["ensaio", "motor", "observacao"])
-    if "observacao" not in df.columns:
-        df["observacao"] = ""
-    df = df[["ensaio", "motor", "observacao"]].apply(lambda c: c.str.strip())
+        return pd.DataFrame(columns=COLS_MOTORES)
+    for c in COLS_MOTORES:
+        if c not in df.columns:
+            df[c] = ""
+    df = df[COLS_MOTORES].apply(lambda c: c.str.strip())
     df["ensaio"] = pd.to_numeric(df["ensaio"], errors="coerce")
     df = df.dropna(subset=["ensaio"])
     df = df[df["motor"] != ""]
@@ -111,7 +116,7 @@ def main():
             motores = parse_motores(_baixa_texto(MOTORES_URL), ",")
     except Exception as err:
         print(f"[fetch_sheet] Aba MOTORES indisponível ({err}).")
-        motores = parse_motores("ensaio,motor,observacao\n", ",")
+        motores = parse_motores(",".join(COLS_MOTORES) + "\n", ",")
     motores.to_csv(MOTORES_PATH, index=False)
     sem_motor = sorted(set(df["ensaio"]) - set(motores["ensaio"]))
     print(f"[fetch_sheet] {len(motores)} motores cadastrados -> {MOTORES_PATH}")

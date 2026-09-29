@@ -34,23 +34,46 @@ o que importa é ter as 4 condições).
 
 ### Aba MOTORES — qual motor foi testado em cada ensaio
 
-Crie na mesma planilha uma aba chamada **`MOTORES`** (exatamente assim),
-com este cabeçalho na linha 1:
+Aba **`MOTORES`** na mesma planilha, com o cabeçalho na linha 1:
 
-| ensaio | motor | observacao |
-|---|---|---|
-| 1 | BOSCH-0451 | Lote 2026-09 |
-| 2 | BOSCH-0452 | |
+| ensaio | motor | observacao | classificacao | atualizado_em |
+|---|---|---|---|---|
+| 1 | BOSCH-0451 | Lote 2026-09 | Aprovado | 29/09/2026 15:20:00 |
 
-- `ensaio`: o mesmo número gravado pela jiga.
-- `motor`: identificação do motor (nº de série, etiqueta, etc.).
-- `observacao`: opcional (lote, origem, defeito relatado…).
+- `classificacao`: `Aprovado`, `Reprovado`, `Em análise` ou vazio. É a
+  classificação **manual** (de quem inspecionou o motor), separada da
+  análise automática do pipeline Python.
+- `atualizado_em`: preenchido sozinho quando o cadastro é feito pelo dashboard.
 
-O dashboard mostra "Ensaio 3 · BOSCH-0453" em todos os seletores, legendas
-e tabelas, além de cartões "Motor" e "Observação" no ensaio individual.
-Enquanto um ensaio não for cadastrado, aparece "não cadastrado". O pipeline
-salva a aba em `data/motores.csv` e inclui o motor em
-`features_por_ensaio.csv` e `classificacao.csv`.
+Pode ser preenchida direto na planilha **ou** pelo formulário
+**"✎ Cadastrar / editar motor"** na aba Ensaio individual do dashboard.
+
+### Formulário de cadastro no dashboard (Apps Script)
+
+O dashboard é uma página estática e não consegue gravar sozinho na
+planilha. Quem grava é um pequeno Apps Script (`apps-script/cadastro_motores.gs`),
+num projeto **separado** do script que recebe os dados do ESP32.
+
+Configuração, uma vez só:
+
+1. Acesse https://script.google.com → **Novo projeto**. Apague o conteúdo e
+   cole o de `apps-script/cadastro_motores.gs`. Salve (nome sugerido:
+   "Cadastro motores - Jiga V2").
+2. **Configurações do projeto** (engrenagem) → **Propriedades do script** →
+   **Adicionar propriedade**: nome `TOKEN`, valor = a senha de cadastro que
+   você escolher.
+3. **Implantar → Nova implantação** → tipo **App da Web**.
+   Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**.
+   Autorize o acesso à planilha quando pedido.
+4. Copie a URL do app da Web (termina em `/exec`) e cole em
+   `CONFIG.MOTORES_WRITE_URL` no `dashboard/app.js`. Faça commit/push.
+
+A senha **não** fica no repositório (que é público): quem cadastra digita
+no formulário; há a opção de lembrar a senha só naquele navegador. Sem a
+senha certa, o script recusa a gravação.
+
+Ao alterar o `.gs` depois, use **Implantar → Gerenciar implantações →
+editar (lápis) → Nova versão**, para manter a mesma URL.
 
 ### Dicionário de colunas
 
@@ -84,6 +107,8 @@ dashboard/
   app.js                   lógica e gráficos (Chart.js + PapaParse)
   styles.css               tema escuro (padrão) e claro
   assets/olsen-logo.png
+apps-script/
+  cadastro_motores.gs      grava o cadastro do motor na aba MOTORES (formulário do dashboard)
 scripts/
   config.py                colunas, frequências, limites — fonte única de configuração
   fetch_sheet.py           baixa a planilha (TSV) -> data/raw_ensaios.csv

@@ -27,3 +27,9 @@ Google Sheets publicado, e pipeline Python para classificação.
 - Aba `MOTORES` da planilha (ensaio | motor | observacao) liga o nº do ensaio ao
   motor. Lida via gviz `sheet=MOTORES`; só é aceita se tiver a coluna `motor`
   (sem a aba, o Google devolve a primeira aba).
+- Colunas da aba MOTORES: ensaio | motor | observacao | classificacao
+  (manual: Aprovado / Reprovado / Em análise) | atualizado_em.
+- O formulário do dashboard grava via Apps Script separado
+  (`apps-script/cadastro_motores.gs`, app da Web). URL em
+  `CONFIG.MOTORES_WRITE_URL`; senha em Propriedades do script (`TOKEN`),
+  nunca no repositório. POST com `text/plain` para evitar preflight de CORS.

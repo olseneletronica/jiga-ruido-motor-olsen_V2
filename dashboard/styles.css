@@ -110,6 +110,9 @@ select {
 .badge.SIM .dot { background: var(--serious); }
 .badge.NAO .dot { background: var(--good); }
 .badge.NA .dot { background: var(--muted); }
+.badge.APROVADO .dot { background: var(--good); }
+.badge.REPROVADO .dot { background: var(--critical); }
+.badge.EM_ANALISE .dot { background: var(--warning); }
 
 /* Gráficos --------------------------------------------------------------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
@@ -133,6 +136,31 @@ td.heat { color: var(--text); }
 }
 .callout.SIM { border-left-color: var(--serious); }
 .callout.NAO { border-left-color: var(--good); }
+
+/* Cadastro do motor ------------------------------------------------------ */
+.motor-form {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 16px; margin-top: 14px;
+}
+.motor-form summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 2px 0; }
+.motor-form form { margin-top: 12px; }
+.form-row { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; margin-bottom: 10px; }
+.form-row label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); }
+.form-row label.grow { flex: 1; min-width: 240px; }
+.form-row label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--text-2); font-size: 0.88rem; padding-bottom: 8px; }
+.form-row input[type=text], .form-row input[type=password] {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  padding: 7px 10px; border-radius: 8px; font: inherit; min-width: 200px;
+}
+.form-row select { min-width: 170px; }
+.form-row input.ro { min-width: 0; width: 110px; color: var(--text-2); background: transparent; }
+.form-row input:focus, .form-row select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.1); color: #fff; }
+.btn:disabled { opacity: 0.6; cursor: wait; }
+.form-msg { margin: 2px 0 4px; font-size: 0.9rem; min-height: 1.2em; }
+.form-msg.ok { color: var(--good); }
+.form-msg.erro { color: var(--critical); }
 
 .empty {
   background: var(--surface); border: 1px dashed var(--border); border-radius: 12px;

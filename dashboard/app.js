@@ -1,4 +1,4 @@
-// Jiga Ruído Motor V2 — Olsen — dashboard
+﻿// Jiga Ruído Motor V2 — Olsen — dashboard
 // Lê a planilha publicada (TSV) direto do Google. Com ?fonte=exemplo usa os
 // dados sintéticos de data/exemplo/raw_exemplo.tsv.
 // A classificação (data/classificacao.csv) é opcional: vem do pipeline Python.
@@ -14,9 +14,12 @@ const CONFIG = {
   // Alternativa: cópia do "Publicar na Web" (TSV), atualizada pelo Google a cada ~5 min.
   SHEET_URL:
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/pub?gid=1681403093&single=true&output=tsv",
-  // Aba MOTORES da mesma planilha: ensaio | motor | observacao
+  // Aba MOTORES da mesma planilha: ensaio | motor | observacao | classificacao | atualizado_em
   MOTORES_URL:
     "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&sheet=MOTORES&headers=1",
+  // URL do app da Web do Apps Script que grava na aba MOTORES
+  // (ver apps-script/cadastro_motores.gs). Vazio = formulário desativado.
+  MOTORES_WRITE_URL: "https://script.google.com/macros/s/AKfycbyFvojPXspkoJNJOpHwEKKKehGACw-Kj54iGgbK0b1dLtfzMvk_2lazoiv3F3WAHYADag/exec",
   EXEMPLO_URL: "../data/exemplo/raw_exemplo.tsv",
   EXEMPLO_MOTORES_URL: "../data/exemplo/motores_exemplo.tsv",
   CLASSIF_URL: "../data/classificacao.csv",
@@ -63,7 +66,7 @@ const CONDICOES = CONFIG.FREQS.flatMap((f) => CONFIG.SENTIDOS.map((s) => ({ s, f
 let rows = [];
 let ensaios = [];          // [{id, inicio, fim, firmware, n, condicoes}]
 let classif = {};          // ensaio -> linha de classificacao.csv
-let motores = {};          // ensaio -> {motor, obs}  (aba MOTORES da planilha)
+let motores = {};          // ensaio -> {motor, obs, classe}  (aba MOTORES da planilha)
 let condStats = {};        // `${ensaio}|${s}|${f}` -> {metric: {mean,std,max,min}, n, inicio}
 const charts = {};
 
@@ -175,7 +178,7 @@ async function loadMotores() {
     data.forEach((r) => {
       const id = Number(String(r.ensaio).trim());
       const motor = String(r.motor || "").trim();
-      if (Number.isFinite(id) && motor) out[id] = { motor, obs: String(r.observacao || "").trim() };
+      if (Number.isFinite(id) && motor) out[id] = { motor, obs: String(r.observacao || "").trim(), classe: String(r.classificacao || "").trim() };
     });
     return out;
   } catch { return {}; }
@@ -294,16 +297,95 @@ function currentEnsaio() {
   return Number(document.getElementById("ensaioSelect").value);
 }
 
-function populateSelect() {
+function fillSelectOptions() {
   const sel = document.getElementById("ensaioSelect");
+  const atual = sel.value;
   sel.innerHTML = ensaios.map((e) => `<option value="${e.id}">${esc(ensaioNome(e.id))}</option>`).join("");
-  sel.value = ensaios[ensaios.length - 1].id; // abre no ensaio mais recente
-  sel.addEventListener("change", renderEnsaioViews);
+  sel.value = atual || ensaios[ensaios.length - 1].id; // abre no ensaio mais recente
+}
+
+function populateSelect() {
+  fillSelectOptions();
+  document.getElementById("ensaioSelect").addEventListener("change", renderEnsaioViews);
+}
+
+// --- Cadastro do motor (grava na aba MOTORES via Apps Script) -------------
+const TOKEN_KEY = "jiga-v2-token";
+
+function fillMotorForm(e) {
+  const m = motores[e.id] || {};
+  document.getElementById("fMotor").value = m.motor || "";
+  document.getElementById("fObs").value = m.obs || "";
+  document.getElementById("fEnsaio").value = `Ensaio ${e.id}`;
+  document.getElementById("fClass").value = CLASSES.includes(m.classe) ? m.classe : "";
+  document.querySelector("#motorForm summary").textContent =
+    m.motor ? `✎ Editar motor do Ensaio ${e.id}` : `✎ Cadastrar motor do Ensaio ${e.id}`;
+  const msg = document.getElementById("fMsg");
+  msg.textContent = ""; msg.className = "form-msg";
+}
+
+function setupMotorForm() {
+  const form = document.getElementById("motorFormEl");
+  const msg = document.getElementById("fMsg");
+  const btn = document.getElementById("fSalvar");
+  const tokenIn = document.getElementById("fToken");
+  const lembrar = document.getElementById("fLembrar");
+  try { const t = localStorage.getItem(TOKEN_KEY); if (t) { tokenIn.value = t; lembrar.checked = true; } } catch {}
+
+  const aviso = usandoExemplo
+    ? "Modo demonstração: o cadastro não é gravado na planilha."
+    : !CONFIG.MOTORES_WRITE_URL
+      ? "Cadastro ainda não configurado: falta a URL do Apps Script em CONFIG.MOTORES_WRITE_URL (ver README)."
+      : "";
+  if (aviso) { msg.textContent = aviso; msg.className = "form-msg"; }
+
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const id = currentEnsaio();
+    const motor = document.getElementById("fMotor").value.trim();
+    const observacao = document.getElementById("fObs").value.trim();
+    const classificacao = document.getElementById("fClass").value;
+    if (!motor) return;
+    if (aviso) { msg.textContent = aviso; msg.className = "form-msg erro"; return; }
+
+    btn.disabled = true;
+    msg.textContent = "Salvando…"; msg.className = "form-msg";
+    try {
+      // text/plain evita o "preflight" de CORS, que o Apps Script não atende.
+      const resp = await fetch(CONFIG.MOTORES_WRITE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ token: tokenIn.value, ensaio: id, motor, observacao, classificacao }),
+      });
+      const r = await resp.json();
+      if (!r.ok) throw new Error(r.erro || "falha ao gravar");
+
+      try { lembrar.checked ? localStorage.setItem(TOKEN_KEY, tokenIn.value) : localStorage.removeItem(TOKEN_KEY); } catch {}
+      motores[id] = { motor: r.motor, obs: r.observacao || "", classe: r.classificacao || "" };
+      if (activeTab === "geral") renderGeral();
+      fillSelectOptions();
+      renderEnsaioViews();
+      refreshCmpLabels();
+      msg.textContent = `✓ Ensaio ${id} ${r.acao === "criado" ? "cadastrado" : "atualizado"}: ${r.motor}`;
+      msg.className = "form-msg ok";
+    } catch (err) {
+      msg.textContent = `✕ ${err.message}`;
+      msg.className = "form-msg erro";
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 function badge(cls, texto) {
   return `<span class="badge ${cls}"><span class="dot"></span>${texto}</span>`;
 }
+// Classificação manual (definida por quem cadastra o motor)
+const CLASSES = ["Aprovado", "Reprovado", "Em análise"];
+const classeKey = (c) => String(c || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_");
+const classeBadge = (c) => (c ? badge(classeKey(c), esc(c)) : '<span class="muted">—</span>');
+
+// Classificação automática (pipeline Python: data/classificacao.csv)
 const STATUS_TXT = { OK: "✓ OK", ATENCAO: "! Atenção", FALHA_PROVAVEL: "✕ Falha provável" };
 
 function renderInfo(e) {
@@ -311,8 +393,8 @@ function renderInfo(e) {
   // Sem classificacao.csv (pipeline ainda não rodou) o selo simplesmente some.
   const temClassif = Object.keys(classif).length > 0;
   document.getElementById("statusBadge").innerHTML = c
-    ? badge(c.status, STATUS_TXT[c.status] || c.status)
-    : temClassif ? badge("NA", "Sem classificação") : "";
+    ? badge(c.status, `Automática: ${STATUS_TXT[c.status] || c.status}`)
+    : temClassif ? badge("NA", "Sem análise automática") : "";
   const ra = resumoAssimetria(e.id);
   document.getElementById("assimBadge").innerHTML =
     ra.status === "NA" ? badge("NA", "Sentidos incompletos")
@@ -323,6 +405,8 @@ function renderInfo(e) {
   const m = motores[e.id];
   const items = [
     ["Motor", m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'],
+    ["Classificação", classeBadge(m && m.classe)],
+    ...(m && m.obs ? [["Observação", esc(m.obs)]] : []),
     ["Início do ensaio", fmtDataHora(e.inicio)],
     ["Fim do ensaio", fmtDataHora(e.fim)],
     ["Duração total", fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)],
@@ -330,7 +414,6 @@ function renderInfo(e) {
     ["Leituras", e.n.toLocaleString("pt-BR")],
     ["Condições", faltando.length ? `${4 - faltando.length}/4 (falta: ${faltando.join(", ")})` : "4/4 completas"],
   ];
-  if (m && m.obs) items.push(["Observação", esc(m.obs)]);
   document.getElementById("ensaioInfo").innerHTML = items.map(([k, v]) => `<div class="item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
 }
 
@@ -472,6 +555,15 @@ function renderCmpChecks() {
   enforceMax();
 }
 
+// Atualiza só os nomes dos checkboxes (ex: depois de cadastrar um motor),
+// mantendo o que já estava marcado.
+function refreshCmpLabels() {
+  document.querySelectorAll("#cmpChecks label").forEach((lab) => {
+    const cb = lab.querySelector("input");
+    lab.lastChild.textContent = ` ${ensaioNome(Number(cb.value))}`;
+  });
+}
+
 // Paleta categórica tem 8 cores — acima disso as cores se repetiriam.
 function enforceMax() {
   const boxes = [...document.querySelectorAll("#cmpChecks input")];
@@ -517,14 +609,15 @@ function renderComparar() {
 // Aba 4 — Visão geral
 // ============================================================================
 function renderGeral() {
-  const head = `<tr><th>Ensaio</th><th>Motor</th><th>Observação</th><th>Início</th><th>Fim</th><th>Duração</th><th>Firmware</th><th>Leituras</th><th>Condições</th><th>Classificação</th><th>Sentidos</th></tr>`;
+  const temAuto = Object.keys(classif).length > 0;
+  const head = `<tr><th>Ensaio</th><th>Motor</th><th>Observação</th><th>Início</th><th>Fim</th><th>Duração</th><th>Firmware</th><th>Leituras</th><th>Condições</th><th>Classificação</th>${temAuto ? "<th>Análise automática</th>" : ""}<th>Sentidos</th></tr>`;
   const body = ensaios.slice().reverse().map((e) => {
     const c = classif[e.id];
     const ra = resumoAssimetria(e.id);
     const st = c ? badge(c.status, STATUS_TXT[c.status] || c.status) : `<span class="muted">—</span>`;
     const as = ra.status === "SIM" ? badge("SIM", `⚠ ${ra.n} canais @ ${freqLabel(ra.f)}`) : ra.status === "NAO" ? badge("NAO", "Equivalentes") : badge("NA", "Incompleto");
     const m = motores[e.id];
-    return `<tr><td>Ensaio ${e.id}</td><td>${m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'}</td><td class="obs">${m && m.obs ? esc(m.obs) : ""}</td><td>${fmtDataHora(e.inicio)}</td><td>${fmtDataHora(e.fim)}</td><td>${fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)}</td><td>${e.firmware || "—"}</td><td>${e.n}</td><td>${e.condicoes.length}/4</td><td>${st}</td><td>${as}</td></tr>`;
+    return `<tr><td>Ensaio ${e.id}</td><td>${m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'}</td><td class="obs">${m && m.obs ? esc(m.obs) : ""}</td><td>${fmtDataHora(e.inicio)}</td><td>${fmtDataHora(e.fim)}</td><td>${fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)}</td><td>${e.firmware || "—"}</td><td>${e.n}</td><td>${e.condicoes.length}/4</td><td>${classeBadge(m && m.classe)}</td>${temAuto ? `<td>${st}</td>` : ""}<td>${as}</td></tr>`;
   }).join("");
   document.getElementById("geralTable").innerHTML = head + body;
 
@@ -572,7 +665,7 @@ function renderEnsaioViews() {
   const e = ensaios.find((x) => x.id === currentEnsaio());
   if (!e) return;
   renderInfo(e);
-  if (activeTab === "ensaio") { renderResumoTable(e); renderEnsaioCharts(e); }
+  if (activeTab === "ensaio") { fillMotorForm(e); renderResumoTable(e); renderEnsaioCharts(e); }
   if (activeTab === "sentido") { renderSentidoTab(e); renderHeatmaps(); }
 }
 
@@ -622,6 +715,7 @@ async function init() {
   document.getElementById("app").style.display = "";
   populateSelect();
   renderCmpChecks();
+  setupMotorForm();
   renderActive();
 }
 

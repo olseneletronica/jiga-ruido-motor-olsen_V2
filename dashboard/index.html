@@ -42,6 +42,29 @@
 
     <!-- Aba 1 -->
     <section id="tab-ensaio" class="tab-panel">
+      <details id="motorForm" class="motor-form">
+        <summary>✎ Cadastrar / editar motor deste ensaio</summary>
+        <form id="motorFormEl" autocomplete="off">
+          <div class="form-row">
+            <label>Ensaio<input type="text" id="fEnsaio" readonly tabindex="-1" class="ro"></label>
+            <label>Motor<input type="text" id="fMotor" maxlength="80" required placeholder="ex: BOSCH-0451"></label>
+            <label>Classificação<select id="fClass">
+              <option value="">— não definida —</option>
+              <option>Aprovado</option>
+              <option>Reprovado</option>
+              <option>Em análise</option>
+            </select></label>
+            <label class="grow">Observação<input type="text" id="fObs" maxlength="300" placeholder="opcional — lote, origem, defeito relatado…"></label>
+          </div>
+          <div class="form-row">
+            <label>Senha<input type="password" id="fToken" required autocomplete="current-password"></label>
+            <label class="check"><input type="checkbox" id="fLembrar"> Lembrar senha neste navegador</label>
+            <button class="btn primary" type="submit" id="fSalvar">Salvar na planilha</button>
+          </div>
+          <p class="form-msg" id="fMsg" role="status"></p>
+        </form>
+      </details>
+
       <h2>Resumo por condição</h2>
       <p class="sub">Resumo da média de cada grandeza nas 4 condições do ensaio.<br>
       <span class="muted">Obs.: vibração e giroscópio mostram o desvio-padrão (componente dinâmica).</span></p>
