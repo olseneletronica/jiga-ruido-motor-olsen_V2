@@ -405,7 +405,7 @@ function renderHeatmaps() {
 function renderCmpChecks() {
   const box = document.getElementById("cmpChecks");
   box.innerHTML = ensaios.map((e, i) =>
-    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> Ensaio ${e.id}</label>
+    `<label><input type="checkbox" value="${e.id}" ${i >= ensaios.length - 3 ? "checked" : ""}> Ensaio ${e.id}</label>`
   ).join("");
   box.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { enforceMax(); renderComparar(); }));
   document.querySelectorAll("input[name=cmpFreq], input[name=cmpSent]").forEach((r) => r.addEventListener("change", renderComparar));
