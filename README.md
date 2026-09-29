@@ -21,7 +21,11 @@ do ESP32 e Apps Script da planilha ficam fora do escopo por enquanto.
 ## Fonte de dados
 
 - Planilha: https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/edit?gid=1681403093
-- Link publicado (TSV), usado pelo dashboard e pelo pipeline:
+- **Leitura ao vivo** (fonte principal do dashboard e do pipeline), que exige
+  o compartilhamento "Qualquer pessoa com o link: Leitor":
+  `https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&gid=1681403093&headers=1`
+- **Cópia publicada (TSV)**, usada automaticamente se a leitura ao vivo
+  falhar. O Google a atualiza a cada ~5 min:
   `https://docs.google.com/spreadsheets/d/e/2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/pub?gid=1681403093&single=true&output=tsv`
 
 Cada linha é uma leitura (1 por segundo). Roteiro esperado de cada ensaio:

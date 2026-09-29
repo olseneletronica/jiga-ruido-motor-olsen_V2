@@ -8,7 +8,8 @@ Google Sheets publicado, e pipeline Python para classificação.
   Script estão fora por enquanto.
 - Ensaio V2 = 4 condições: {15 kHz, 20 kHz} × {horário "H", anti-horário "AH"}.
   A chave de condição é `"{sentido}_{frequencia_hz}"` (ex: `AH_20000`).
-- Fonte de dados: planilha publicada em **TSV**, vírgula decimal (locale BR).
+- Fonte de dados: leitura ao vivo via `gviz/tq?tqx=out:csv` (CSV com aspas), com a
+  cópia "Publicar na Web" em TSV como fallback. Vírgula decimal (locale BR).
 - `scripts/config.py` é a fonte única de colunas, frequências e limites.
   O bloco `CONFIG` e `METRICS` em `dashboard/app.js` espelham esses valores —
   ao mudar um, mudar o outro.

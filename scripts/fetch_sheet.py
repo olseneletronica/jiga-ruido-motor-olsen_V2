@@ -1,8 +1,9 @@
 """
-fetch_sheet.py — baixa a planilha publicada (TSV) e salva um snapshot limpo
-em data/raw_ensaios.csv.
+fetch_sheet.py — baixa a planilha e salva um snapshot limpo em
+data/raw_ensaios.csv.
 
-- Separador de campo: TAB (output=tsv).
+- Fonte principal: leitura ao vivo (CSV via gviz). Se falhar, usa a cópia
+  do "Publicar na Web" (TSV, atualizada pelo Google a cada ~5 min).
 - Separador decimal: a planilha está em locale BR, então os números chegam
   com vírgula ("31,779"). Aqui tudo é convertido para ponto antes de salvar.
 - `sentido` é normalizado para "H" (horário) / "AH" (anti-horário).
@@ -20,7 +21,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from config import (
-    DATA_DIR, EXEMPLO_TSV, EXPECTED_COLUMNS, NUMERIC_COLUMNS, RAW_PATH,
+    DATA_DIR, EXEMPLO_TSV, EXPECTED_COLUMNS, LIVE_URL, NUMERIC_COLUMNS, RAW_PATH,
     SHEET_URL, normaliza_sentido,
 )
 
@@ -38,8 +39,8 @@ def _para_numero(serie: pd.Series) -> pd.Series:
     return pd.to_numeric(texto.replace({"": None, "nan": None}), errors="coerce")
 
 
-def parse_tsv(texto: str) -> pd.DataFrame:
-    df = pd.read_csv(io.StringIO(texto), sep="\t", dtype=str, keep_default_na=False)
+def parse_tabela(texto: str, sep: str) -> pd.DataFrame:
+    df = pd.read_csv(io.StringIO(texto), sep=sep, dtype=str, keep_default_na=False)
     df.columns = [c.strip() for c in df.columns]
 
     faltando = [c for c in EXPECTED_COLUMNS if c not in df.columns]
@@ -71,13 +72,17 @@ def main():
     args = parser.parse_args()
 
     if args.exemplo:
-        texto = EXEMPLO_TSV.read_text(encoding="utf-8")
+        df = parse_tabela(EXEMPLO_TSV.read_text(encoding="utf-8"), "\t")
         origem = str(EXEMPLO_TSV)
     else:
-        texto = _baixa_texto(SHEET_URL)
-        origem = "planilha publicada"
+        try:
+            df = parse_tabela(_baixa_texto(LIVE_URL), ",")
+            origem = "planilha (ao vivo)"
+        except Exception as err:  # sem compartilhamento público, rede, etc.
+            print(f"[fetch_sheet] Leitura ao vivo falhou ({err}); usando a cópia publicada.")
+            df = parse_tabela(_baixa_texto(SHEET_URL), "\t")
+            origem = "planilha (cópia publicada)"
 
-    df = parse_tsv(texto)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(RAW_PATH, index=False)
 

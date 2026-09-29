@@ -19,7 +19,14 @@ BASELINE_PATH = DATA_DIR / "baseline.json"
 CLASSIF_PATH = DATA_DIR / "classificacao.csv"
 EXEMPLO_TSV = EXEMPLO_DIR / "raw_exemplo.tsv"
 
-# Planilha publicada (aba de dados), saída em TSV.
+# Leitura AO VIVO da planilha (exige "Qualquer pessoa com o link: Leitor").
+# Devolve CSV com todos os campos entre aspas e vírgula decimal (locale BR).
+LIVE_URL = (
+    "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/"
+    "gviz/tq?tqx=out:csv&gid=1681403093&headers=1"
+)
+
+# Alternativa: cópia do "Publicar na Web" em TSV (Google atualiza a cada ~5 min).
 SHEET_URL = (
     "https://docs.google.com/spreadsheets/d/e/"
     "2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/"

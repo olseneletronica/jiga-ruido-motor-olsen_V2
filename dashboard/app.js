@@ -7,6 +7,11 @@
 // CONFIG — manter sincronizado com scripts/config.py
 // ============================================================================
 const CONFIG = {
+  // Fonte principal: leitura AO VIVO da planilha (exige compartilhamento
+  // "Qualquer pessoa com o link: Leitor"). Devolve CSV com campos entre aspas.
+  LIVE_URL:
+    "https://docs.google.com/spreadsheets/d/1EoOMY2sz4lsfE4Ih1M0O-X2gurAkqWX6_AQtDyLDPfQ/gviz/tq?tqx=out:csv&gid=1681403093&headers=1",
+  // Alternativa: cópia do "Publicar na Web" (TSV), atualizada pelo Google a cada ~5 min.
   SHEET_URL:
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQPQHZZCerggzoirByMfiJk7NSo08Od6YgiiOQeEy_bTaKEAC_xa1tYhqeRWMJgIkeVBiNwD0h-jXoh/pub?gid=1681403093&single=true&output=tsv",
   EXEMPLO_URL: "../data/exemplo/raw_exemplo.tsv",
@@ -110,11 +115,31 @@ function stats(vals) {
 const params = new URLSearchParams(location.search);
 const usandoExemplo = params.get("fonte") === "exemplo";
 
+const withBuster = (u) => `${u}${u.includes("?") ? "&" : "?"}_=${Date.now()}`;
+
+async function fetchTable(url, delimiter) {
+  const resp = await fetch(withBuster(url));
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const text = await resp.text();
+  // Sem compartilhamento público o Google devolve a página de login (HTML).
+  if (/^\s*</.test(text)) throw new Error("resposta não é uma tabela (planilha sem compartilhamento público?)");
+  const data = Papa.parse(text, { header: true, delimiter, skipEmptyLines: true, transformHeader: (h) => h.trim() }).data;
+  if (!data.length || !("ensaio" in data[0])) throw new Error("cabeçalho inesperado");
+  return data;
+}
+
 async function loadRows() {
-  const base = usandoExemplo ? CONFIG.EXEMPLO_URL : CONFIG.SHEET_URL;
-  const url = `${base}${base.includes("?") ? "&" : "?"}_=${Date.now()}`; // cache-buster da CDN do Google
-  const text = await (await fetch(url)).text();
-  const parsed = Papa.parse(text, { header: true, delimiter: "\t", skipEmptyLines: true, transformHeader: (h) => h.trim() }).data;
+  let parsed;
+  if (usandoExemplo) {
+    parsed = await fetchTable(CONFIG.EXEMPLO_URL, "\t");
+  } else {
+    try {
+      parsed = await fetchTable(CONFIG.LIVE_URL, ",");
+    } catch (err) {
+      console.warn("Leitura ao vivo falhou, usando a cópia publicada:", err.message);
+      parsed = await fetchTable(CONFIG.SHEET_URL, "\t");
+    }
+  }
   return parsed.map((r) => {
     const o = { timestamp: r.timestamp, firmware: r.firmware, sentido: normalizaSentido(r.sentido) };
     NUMERIC_COLUMNS.forEach((c) => (o[c] = toNumberBR(r[c])));
