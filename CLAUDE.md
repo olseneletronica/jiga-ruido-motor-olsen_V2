@@ -46,3 +46,7 @@ Google Sheets publicado, e pipeline Python para classificação.
 - Aba Comparar: filtro `cmpClasse` (TODOS/APROVADO/REPROVADO/EM_ANALISE) usa
   `classeKey(motores[id].classe)`; seleção guardada em `cmpSel` (Set), gráficos
   usam marcados ∩ visíveis (`cmpAtivos()`).
+- Carregamento (`carregar()`): a página aparece assim que a aba DADOS chega;
+  MOTORES (Apps Script, pode demorar "acordando") entra depois via
+  `aplicarMotores()`. Tempos-limite: DADOS 30 s, Apps Script 12 s (cai no
+  gviz), gviz MOTORES 15 s. Cliques durante uma carga são ignorados.

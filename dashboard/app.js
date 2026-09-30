@@ -8,7 +8,7 @@
 // ============================================================================
 // Versão do dashboard. Ao publicar mudanças, atualize aqui E no index.html
 // (?v=... do app.js e do styles.css), para o navegador não usar arquivo em cache.
-const VERSAO = "2026.09.30-2";
+const VERSAO = "2026.09.30-3";
 
 const CONFIG = {
   // Leitura AO VIVO da aba DADOS (onde o ESP32 grava). Exige compartilhamento
@@ -131,8 +131,16 @@ const usandoExemplo = params.get("fonte") === "exemplo";
 
 const withBuster = (u) => `${u}${u.includes("?") ? "&" : "?"}_=${Date.now()}`;
 
-async function fetchTable(url, delimiter) {
-  const resp = await fetch(withBuster(url));
+// fetch com tempo-limite (AbortError ao estourar).
+async function fetchComLimite(url, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+}
+
+async function fetchTable(url, delimiter, ms = 30000) {
+  const resp = await fetchComLimite(withBuster(url), ms);
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const text = await resp.text();
   // Sem compartilhamento público o Google devolve a página de login (HTML).
@@ -160,7 +168,7 @@ async function loadRows() {
 
 async function loadClassif() {
   try {
-    const resp = await fetch(`${CONFIG.CLASSIF_URL}?_=${Date.now()}`);
+    const resp = await fetchComLimite(`${CONFIG.CLASSIF_URL}?_=${Date.now()}`, 8000);
     if (!resp.ok) return {};
     const data = Papa.parse(await resp.text(), { header: true, skipEmptyLines: true }).data;
     return Object.fromEntries(data.map((r) => [Number(r.ensaio), r]));
@@ -192,7 +200,8 @@ async function loadMotores() {
   // 1) Apps Script: texto exato das células, sem adivinhação de tipo.
   if (CONFIG.MOTORES_WRITE_URL) {
     try {
-      const resp = await fetch(withBuster(`${CONFIG.MOTORES_WRITE_URL}?acao=listar`));
+      // Apps Script "frio" pode levar vários segundos; passou de 12 s, usa o gviz.
+      const resp = await fetchComLimite(withBuster(`${CONFIG.MOTORES_WRITE_URL}?acao=listar`), 12000);
       const r = await resp.json();
       if (r.ok && Array.isArray(r.linhas)) return motoresFromRows(r.linhas);
       // Script antigo (sem "listar") responde ok sem "linhas": cai no gviz.
@@ -202,7 +211,7 @@ async function loadMotores() {
   }
   // 2) Reserva: gviz.
   try {
-    const data = await fetchTable(CONFIG.MOTORES_URL, ",");
+    const data = await fetchTable(CONFIG.MOTORES_URL, ",", 15000);
     return "motor" in data[0] ? motoresFromRows(data) : {};
   } catch { return {}; }
 }
@@ -767,9 +776,14 @@ function showEmpty(html) {
   el.innerHTML = html;
 }
 
-function carregarTudo() {
-  return Promise.all([loadRows(), usandoExemplo ? Promise.resolve({}) : loadClassif(), loadMotores()]);
-}
+// ============================================================================
+// Carregamento dos dados
+// ============================================================================
+// A aba DADOS é o que a página precisa para aparecer; MOTORES (Apps Script,
+// que pode levar vários segundos "acordando") e a classificação automática
+// chegam em paralelo e são aplicadas quando ficarem prontas, sem travar a tela.
+// Toda busca tem tempo-limite, para uma resposta lenta do Google não prender a
+// página indefinidamente.
 
 function setStamp(texto, erro = false) {
   const el = document.getElementById("dataStamp");
@@ -777,60 +791,116 @@ function setStamp(texto, erro = false) {
   el.classList.toggle("erro", erro);
 }
 const horaAgora = () => new Date().toLocaleTimeString("pt-BR");
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Botão "Atualizar dados": busca a planilha de novo SEM recarregar a página,
-// mantendo aba, ensaio selecionado e ensaios marcados na comparação.
-async function atualizarDados() {
-  const btn = document.getElementById("refreshBtn");
-  btn.disabled = true;
-  btn.classList.remove("erro");
-  btn.textContent = "⟳ Atualizando…";
-  setStamp("Atualizando…");
-  try {
-    const [r, c, m] = await carregarTudo();
-    if (!r.length) throw new Error("planilha sem leituras válidas");
-    rows = r; classif = c; motores = m;
-    buildIndex();
+let appVisivel = false;
+let carregando = false;
+let ultimaLeitura = null;
+
+function stampOk() {
+  setStamp(`Dados de ${ultimaLeitura} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
+}
+
+// Mostra o dashboard na primeira vez que houver dados; nas seguintes, só
+// redesenha mantendo aba, ensaio selecionado e ensaios marcados.
+function aplicarDados() {
+  buildIndex();
+  if (!appVisivel) {
+    appVisivel = true;
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("app").style.display = "";
+    populateSelect();
+    renderCmpChecks();
+    setupCmpControls();
+    setupMotorForm();
+  } else {
     fillSelectOptions();
     renderCmpChecks();
-    renderActive();
-    setStamp(`Dados de ${horaAgora()} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
-    btn.title = "";
+  }
+  renderActive();
+}
+
+// Nomes/classificações dos motores chegaram depois dos dados: atualiza rótulos.
+function aplicarMotores(m) {
+  motores = m;
+  if (!appVisivel) return;
+  fillSelectOptions();
+  renderCmpChecks();
+  renderActive();
+}
+
+function setBotao(estado) {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = estado === "carregando";
+  btn.classList.toggle("erro", estado === "erro");
+  btn.textContent = { carregando: "⟳ Carregando…", erro: "⚠ Tentar de novo", ok: "⟳ Atualizar dados" }[estado];
+  btn.title = estado === "erro" ? "Falha ao carregar — veja o rodapé da página" : "";
+}
+
+// Mensagem de carregamento com contador, para ficar claro que está andando.
+function contadorCarregando() {
+  const el = document.getElementById("loading");
+  const t0 = Date.now();
+  const tick = () => {
+    const s = Math.round((Date.now() - t0) / 1000);
+    el.textContent = s < 2 ? "Carregando dados da planilha…" : `Carregando dados da planilha… ${s} s`;
+  };
+  tick();
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+}
+
+async function carregar() {
+  if (carregando) return;               // ignora cliques enquanto já está buscando
+  carregando = true;
+  setBotao("carregando");
+  setStamp(appVisivel ? "Atualizando…" : "Carregando…");
+  const pararContador = appVisivel ? () => {} : contadorCarregando();
+
+  const pMotores = loadMotores();
+  const pClassif = usandoExemplo ? Promise.resolve({}) : loadClassif();
+  try {
+    const r = await loadRows();
+    if (!r.length) throw new Error("a planilha ainda não tem leituras válidas (com ensaio, sentido e frequência)");
+    rows = r;
+    // Se os motores chegarem logo, entram já na primeira pintura (evita o
+    // rótulo "Ensaio 3" trocar para "Ensaio 3 · BOSCH…" um instante depois).
+    const m = await Promise.race([pMotores, esperar(1500).then(() => null)]);
+    if (m) motores = m;
+    classif = await Promise.race([pClassif, esperar(500).then(() => classif)]);
+    ultimaLeitura = horaAgora();
+    pararContador();
+    aplicarDados();
+    stampOk();
+    setBotao("ok");
+    if (!m) pMotores.then((mm) => { aplicarMotores(mm); stampOk(); });
   } catch (err) {
-    setStamp(`Falha ao atualizar (${err.message}) — mostrando os dados anteriores`, true);
-    btn.classList.add("erro");
-    btn.title = "Falha ao atualizar — veja o rodapé da página";
+    pararContador();
+    const msg = err.name === "AbortError" ? "o Google demorou demais para responder" : err.message;
+    if (appVisivel) {
+      setStamp(`Falha ao atualizar (${msg}) — mostrando os dados de ${ultimaLeitura}`, true);
+    } else {
+      setStamp(`Falha ao carregar (${msg})`, true);
+      showEmpty(`Não foi possível ler a planilha: ${esc(msg)}.<br>Clique em <strong>⚠ Tentar de novo</strong> no topo, ou <a href="?fonte=exemplo">abra com dados de exemplo</a>.`);
+    }
+    setBotao("erro");
   } finally {
-    btn.disabled = false;
-    btn.textContent = btn.classList.contains("erro") ? "⚠ Tentar de novo" : "⟳ Atualizar dados";
+    carregando = false;
   }
 }
 
-async function init() {
+function init() {
   setupTabs();
   setupTheme();
-  document.getElementById("refreshBtn").addEventListener("click", atualizarDados);
-
-  try {
-    [rows, classif, motores] = await carregarTudo();
-  } catch (err) {
-    showEmpty(`Não foi possível ler a planilha (${esc(err.message)}). <br><a href="?fonte=exemplo">Abrir com dados de exemplo</a>`);
-    return;
-  }
-  if (!rows.length) {
-    showEmpty(`A planilha ainda não tem leituras válidas (com ensaio, sentido e frequência).<br><a href="?fonte=exemplo">Abrir com dados de exemplo</a> para ver o dashboard funcionando.`);
-    return;
-  }
-
-  buildIndex();
-  document.getElementById("loading").style.display = "none";
-  document.getElementById("app").style.display = "";
-  populateSelect();
-  renderCmpChecks();
-  setupCmpControls();
-  setupMotorForm();
-  renderActive();
-  setStamp(`Dados de ${horaAgora()} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
+  document.getElementById("refreshBtn").addEventListener("click", () => {
+    if (!appVisivel) {
+      document.getElementById("emptyState").style.display = "none";
+      document.getElementById("loading").style.display = "";
+    }
+    carregar();
+  });
+  carregar();
 }
 
 init();
