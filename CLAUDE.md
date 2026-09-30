@@ -40,3 +40,9 @@ Google Sheets publicado, e pipeline Python para classificação.
 - `apps-script/receber_dados_esp32.gs` é só uma cópia de registro do script
   vinculado à planilha (recebe o ESP32, grava na aba DADOS, `sentido` =
   HORARIO/ANTIHORARIO, 20 s por etapa). O original vive na planilha.
+- Cache: GitHub Pages manda cache de ~10 min. `index.html` carrega
+  `app.js?v=…`/`styles.css?v=…`; a constante `VERSAO` no app.js aparece ao lado
+  da hora da leitura. Ao publicar, incrementar os três juntos.
+- Aba Comparar: filtro `cmpClasse` (TODOS/APROVADO/REPROVADO/EM_ANALISE) usa
+  `classeKey(motores[id].classe)`; seleção guardada em `cmpSel` (Set), gráficos
+  usam marcados ∩ visíveis (`cmpAtivos()`).

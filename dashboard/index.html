@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-br" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jiga Ruído Motor V2 — Olsen</title>
-<link rel="stylesheet" href="styles.css?v=2026.09.29-1">
+<link rel="stylesheet" href="styles.css?v=2026.09.30-1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
@@ -100,7 +100,15 @@
     <!-- Aba 3 -->
     <section id="tab-comparar" class="tab-panel" style="display:none">
       <p class="sub">Escolha até 8 ensaios e a condição a comparar.</p>
-      <div class="filters" id="cmpFilters">
+      <div class="filters" id="cmpClasse">
+        <div class="grp"><span class="grp-title">Classificação</span>
+          <label><input type="radio" name="cmpClasse" value="TODOS" checked> Todos <span class="cnt" data-cnt="TODOS"></span></label>
+          <label><input type="radio" name="cmpClasse" value="APROVADO"> <span class="cdot APROVADO"></span>Aprovados <span class="cnt" data-cnt="APROVADO"></span></label>
+          <label><input type="radio" name="cmpClasse" value="REPROVADO"> <span class="cdot REPROVADO"></span>Reprovados <span class="cnt" data-cnt="REPROVADO"></span></label>
+          <label><input type="radio" name="cmpClasse" value="EM_ANALISE"> <span class="cdot EM_ANALISE"></span>Em análise <span class="cnt" data-cnt="EM_ANALISE"></span></label>
+        </div>
+      </div>
+      <div class="filters" id="cmpFilters" style="margin-top:10px">
         <div class="grp"><span class="grp-title">Frequência</span>
           <label><input type="radio" name="cmpFreq" value="15000" checked> 15 kHz</label>
           <label><input type="radio" name="cmpFreq" value="20000"> 20 kHz</label>
@@ -127,6 +135,6 @@
     </section>
   </main>
 
-<script src="app.js?v=2026.09.29-1"></script>
+<script src="app.js?v=2026.09.30-1"></script>
 </body>
 </html>

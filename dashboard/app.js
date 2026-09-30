@@ -1,4 +1,4 @@
-﻿// Jiga Ruído Motor V2 — Olsen — dashboard
+// Jiga Ruído Motor V2 — Olsen — dashboard
 // Lê a planilha publicada (TSV) direto do Google. Com ?fonte=exemplo usa os
 // dados sintéticos de data/exemplo/raw_exemplo.tsv.
 // A classificação (data/classificacao.csv) é opcional: vem do pipeline Python.
@@ -6,7 +6,11 @@
 // ============================================================================
 // CONFIG — manter sincronizado com scripts/config.py
 // ============================================================================
-const VERSAO = "2026.09.29-1"; const CONFIG = {
+// Versão do dashboard. Ao publicar mudanças, atualize aqui E no index.html
+// (?v=... do app.js e do styles.css), para o navegador não usar arquivo em cache.
+const VERSAO = "2026.09.30-1";
+
+const CONFIG = {
   // Leitura AO VIVO da aba DADOS (onde o ESP32 grava). Exige compartilhamento
   // "Qualquer pessoa com o link: Leitor". Devolve CSV com campos entre aspas.
   // Selecionada pelo NOME da aba (sheet=DADOS), não pelo gid: se a aba for
@@ -385,7 +389,8 @@ function setupMotorForm() {
       if (activeTab === "geral") renderGeral();
       fillSelectOptions();
       renderEnsaioViews();
-      refreshCmpLabels();
+      renderCmpChecks();
+      if (activeTab === "comparar") renderComparar();
       msg.textContent = `✓ Ensaio ${id} ${r.acao === "criado" ? "cadastrado" : "atualizado"}: ${r.motor}`;
       msg.className = "form-msg ok";
     } catch (err) {
@@ -561,35 +566,69 @@ function renderHeatmaps() {
 // ============================================================================
 // Aba 3 — Comparar ensaios
 // ============================================================================
-// Monta os checkboxes. Na primeira vez marca os 3 ensaios mais recentes;
-// ao atualizar os dados, mantém o que já estava marcado.
+// Filtro por classificação (aba MOTORES). "TODOS" inclui os ensaios ainda
+// sem classificação; os demais filtros mostram só os ensaios com aquela
+// classificação. A seleção de ensaios fica guardada em cmpSel.
+const CLASSE_NOME = { APROVADO: "Aprovado", REPROVADO: "Reprovado", EM_ANALISE: "Em análise" };
+let cmpFiltro = "TODOS";
+let cmpSel = null;           // Set com os ensaios marcados (null = ainda não inicializado)
+
+const classeDe = (id) => classeKey(motores[id] && motores[id].classe);   // "" se não classificado
+const ensaiosDoFiltro = () =>
+  cmpFiltro === "TODOS" ? ensaios : ensaios.filter((e) => classeDe(e.id) === cmpFiltro);
+
+// Seleção padrão de um filtro: em "Todos", os 3 ensaios mais recentes;
+// numa classificação, todos os ensaios dela (até 8, os mais recentes).
+function selecaoPadrao() {
+  const lista = ensaiosDoFiltro();
+  const n = cmpFiltro === "TODOS" ? 3 : CONFIG.MAX_COMPARAR;
+  return new Set(lista.slice(-n).map((e) => e.id));
+}
+
+// Ensaios que entram nos gráficos: marcados E visíveis no filtro atual.
+const cmpAtivos = () => ensaiosDoFiltro().filter((e) => cmpSel.has(e.id)).map((e) => e.id);
+
+// Monta contadores e checkboxes. Ao atualizar os dados ou cadastrar um motor,
+// mantém o que já estava marcado.
 function renderCmpChecks() {
+  if (!cmpSel) cmpSel = selecaoPadrao();
+  const ids = new Set(ensaios.map((e) => e.id));
+  cmpSel = new Set([...cmpSel].filter((id) => ids.has(id)));
+
+  const cont = { TODOS: ensaios.length, APROVADO: 0, REPROVADO: 0, EM_ANALISE: 0 };
+  ensaios.forEach((e) => { const k = classeDe(e.id); if (k in cont) cont[k]++; });
+  document.querySelectorAll("#cmpClasse .cnt").forEach((el) => (el.textContent = `(${cont[el.dataset.cnt]})`));
+
   const box = document.getElementById("cmpChecks");
-  const antes = box.querySelectorAll("input").length
-    ? new Set([...box.querySelectorAll("input:checked")].map((i) => Number(i.value)))
-    : null;
-  box.innerHTML = ensaios.map((e, i) => {
-    const on = antes ? antes.has(e.id) : i >= ensaios.length - 3;
-    return `<label><input type="checkbox" value="${e.id}" ${on ? "checked" : ""}> ${esc(ensaioNome(e.id))}</label>`;
+  const lista = ensaiosDoFiltro();
+  if (!lista.length) {
+    box.innerHTML = `<span class="muted">Nenhum ensaio classificado como "${CLASSE_NOME[cmpFiltro]}" na aba MOTORES.</span>`;
+    return;
+  }
+  box.innerHTML = lista.map((e) => {
+    const k = classeDe(e.id);
+    const titulo = k ? CLASSE_NOME[k] || motores[e.id].classe : "Sem classificação";
+    return `<label title="${esc(titulo)}"><input type="checkbox" value="${e.id}" ${cmpSel.has(e.id) ? "checked" : ""}> <span class="cdot ${k}"></span>${esc(ensaioNome(e.id))}</label>`;
   }).join("");
-  box.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => { enforceMax(); renderComparar(); }));
+  box.querySelectorAll("input").forEach((cb) => cb.addEventListener("change", () => {
+    const id = Number(cb.value);
+    cb.checked ? cmpSel.add(id) : cmpSel.delete(id);
+    enforceMax(); renderComparar();
+  }));
   enforceMax();
 }
 
 function setupCmpControls() {
   document.querySelectorAll("input[name=cmpFreq], input[name=cmpSent]").forEach((r) => r.addEventListener("change", renderComparar));
+  document.querySelectorAll("input[name=cmpClasse]").forEach((r) => r.addEventListener("change", () => {
+    cmpFiltro = r.value;
+    cmpSel = selecaoPadrao();
+    renderCmpChecks();
+    renderComparar();
+  }));
   document.getElementById("cmpClear").addEventListener("click", () => {
-    document.querySelectorAll("#cmpChecks input").forEach((cb) => (cb.checked = false));
-    enforceMax(); renderComparar();
-  });
-}
-
-// Atualiza só os nomes dos checkboxes (ex: depois de cadastrar um motor),
-// mantendo o que já estava marcado.
-function refreshCmpLabels() {
-  document.querySelectorAll("#cmpChecks label").forEach((lab) => {
-    const cb = lab.querySelector("input");
-    lab.lastChild.textContent = ` ${ensaioNome(Number(cb.value))}`;
+    ensaiosDoFiltro().forEach((e) => cmpSel.delete(e.id));
+    renderCmpChecks(); renderComparar();
   });
 }
 
@@ -601,12 +640,16 @@ function enforceMax() {
 }
 
 function renderComparar() {
-  const sel = [...document.querySelectorAll("#cmpChecks input:checked")].map((i) => Number(i.value));
+  const sel = cmpSel ? cmpAtivos() : [];
   const f = Number(document.querySelector("input[name=cmpFreq]:checked").value);
   const sentSel = document.querySelector("input[name=cmpSent]:checked").value;
   const sents = sentSel === "AMBOS" ? CONFIG.SENTIDOS : [sentSel];
   const cont = document.getElementById("cmpCharts");
-  if (!sel.length) { cont.innerHTML = `<div class="empty" style="margin-top:16px">Marque pelo menos um ensaio.</div>`; return; }
+  if (!sel.length) {
+    const msg = ensaiosDoFiltro().length ? "Marque pelo menos um ensaio." : "Nenhum ensaio nesta classificação.";
+    cont.innerHTML = `<div class="empty" style="margin-top:16px">${msg}</div>`;
+    return;
+  }
 
   renderMetricGrid("cmpCharts", "cmp");
   // Cor fica presa ao ensaio (ordem da lista completa), não à posição na seleção.
@@ -730,7 +773,7 @@ function carregarTudo() {
 
 function setStamp(texto, erro = false) {
   const el = document.getElementById("dataStamp");
-  el.textContent = `${texto} - v${VERSAO}`;
+  el.textContent = `${texto} · v${VERSAO}`;
   el.classList.toggle("erro", erro);
 }
 const horaAgora = () => new Date().toLocaleTimeString("pt-BR");

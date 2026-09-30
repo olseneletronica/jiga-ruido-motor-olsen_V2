@@ -149,7 +149,10 @@ Python. Abas:
    frequências, com o limite configurado; tabela de valores; mapa de calor
    com todos os ensaios.
 3. **Comparar ensaios** — até 8 ensaios lado a lado numa condição
-   (frequência + sentido, ou os dois sentidos).
+   (frequência + sentido, ou os dois sentidos). Filtro por **classificação**
+   da aba MOTORES: Todos (padrão, inclui os não classificados), Aprovados,
+   Reprovados e Em análise, com a contagem de cada um. Ao trocar o filtro,
+   os ensaios daquela classificação já vêm marcados (até 8, os mais recentes).
 4. **Visão geral** — tabela de todos os ensaios (início, fim, duração,
    classificação, resultado de sentido) e média de cada grandeza por
    ensaio/condição.

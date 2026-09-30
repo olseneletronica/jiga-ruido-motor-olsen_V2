@@ -116,6 +116,11 @@ select {
 .badge.APROVADO .dot { background: var(--good); }
 .badge.REPROVADO .dot { background: var(--critical); }
 .badge.EM_ANALISE .dot { background: var(--warning); }
+.cdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 2px; background: var(--muted); }
+.cdot.APROVADO { background: var(--good); }
+.cdot.REPROVADO { background: var(--critical); }
+.cdot.EM_ANALISE { background: var(--warning); }
+.cnt { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 
 /* Gráficos --------------------------------------------------------------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
