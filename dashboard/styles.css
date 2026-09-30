@@ -68,9 +68,14 @@ p.sub { color: var(--text-2); margin: 0 0 12px; max-width: 80ch; }
   padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 0.9rem;
 }
 .btn:hover { border-color: var(--accent); color: var(--accent); }
-.refresh { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.stamp { font-size: 0.78rem; color: var(--muted); max-width: 320px; text-align: right; }
-.stamp.erro { color: var(--critical); }
+.btn.erro { border-color: var(--critical); color: var(--critical); }
+
+/* Rodapé com a hora da última leitura, totais e versão */
+.rodape {
+  margin-top: 40px; padding: 14px 0 4px; border-top: 1px solid var(--border);
+  font-size: 0.82rem; color: var(--muted); text-align: center;
+}
+.rodape .erro { color: var(--critical); }
 
 /* Abas ------------------------------------------------------------------ */
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 18px; }

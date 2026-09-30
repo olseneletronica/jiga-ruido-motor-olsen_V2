@@ -8,7 +8,7 @@
 // ============================================================================
 // Versão do dashboard. Ao publicar mudanças, atualize aqui E no index.html
 // (?v=... do app.js e do styles.css), para o navegador não usar arquivo em cache.
-const VERSAO = "2026.09.30-1";
+const VERSAO = "2026.09.30-2";
 
 const CONFIG = {
   // Leitura AO VIVO da aba DADOS (onde o ESP32 grava). Exige compartilhamento
@@ -783,6 +783,8 @@ const horaAgora = () => new Date().toLocaleTimeString("pt-BR");
 async function atualizarDados() {
   const btn = document.getElementById("refreshBtn");
   btn.disabled = true;
+  btn.classList.remove("erro");
+  btn.textContent = "⟳ Atualizando…";
   setStamp("Atualizando…");
   try {
     const [r, c, m] = await carregarTudo();
@@ -793,10 +795,14 @@ async function atualizarDados() {
     renderCmpChecks();
     renderActive();
     setStamp(`Dados de ${horaAgora()} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
+    btn.title = "";
   } catch (err) {
     setStamp(`Falha ao atualizar (${err.message}) — mostrando os dados anteriores`, true);
+    btn.classList.add("erro");
+    btn.title = "Falha ao atualizar — veja o rodapé da página";
   } finally {
     btn.disabled = false;
+    btn.textContent = btn.classList.contains("erro") ? "⚠ Tentar de novo" : "⟳ Atualizar dados";
   }
 }
 

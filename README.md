@@ -29,7 +29,8 @@ do ESP32 e Apps Script da planilha ficam fora do escopo por enquanto.
 > passa a ler uma aba parada. Foi o que aconteceu com o `gid=1681403093`.
 
 O botão **⟳ Atualizar dados** busca a planilha de novo sem recarregar a
-página (mantém aba, ensaio e seleção) e mostra a hora da última leitura.
+página (mantém aba, ensaio e seleção). A hora da última leitura, os totais
+e a versão do dashboard ficam no rodapé da página.
 
 Cada linha é uma leitura (1 por segundo). Roteiro esperado de cada ensaio:
 **15 kHz H → 15 kHz AH → 20 kHz H → 20 kHz AH** (a ordem não é obrigatória;

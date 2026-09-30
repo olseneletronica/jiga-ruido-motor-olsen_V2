@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jiga Ruído Motor V2 — Olsen</title>
-<link rel="stylesheet" href="styles.css?v=2026.09.30-1">
+<link rel="stylesheet" href="styles.css?v=2026.09.30-2">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
@@ -17,10 +17,7 @@
       <strong>Sensores:</strong> corrente, tensão, potência, vibração, giroscópio e áudio (2 microfones).</p>
     </div>
     <button class="btn" id="themeBtn" type="button">◐ Tema</button>
-    <div class="refresh">
-      <button class="btn" type="button" id="refreshBtn">⟳ Atualizar dados</button>
-      <span id="dataStamp" class="stamp"></span>
-    </div>
+    <button class="btn" type="button" id="refreshBtn">⟳ Atualizar dados</button>
   </header>
 
   <nav class="tabs">
@@ -135,6 +132,10 @@
     </section>
   </main>
 
-<script src="app.js?v=2026.09.30-1"></script>
+  <footer class="rodape">
+    <span id="dataStamp"></span>
+  </footer>
+
+<script src="app.js?v=2026.09.30-2"></script>
 </body>
 </html>
