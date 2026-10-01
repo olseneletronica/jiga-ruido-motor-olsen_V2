@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Critérios Bom × Ruim da Jiga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: relatório de laboratório em uma coluna larga; cada grandeza vira um
+   gráfico de pontos (um ponto por motor) com a linha de limite proposta. */
+:root {
+  --bg: #f4f6f8; --surface: #ffffff; --fg: #141a21; --fg2: #46505c; --muted: #6b7582;
+  --rule: #d8dde4; --grid: #e6e9ee; --accent: #2c5d8c; --zone: rgba(208,59,59,0.07);
+  --ok: #0f8a0f; --bad: #c83434; --warn: #b07400; --none: #8a929c;
+  --heat0: #eef3f8; --heat1: #2c5d8c;
+  --display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1216; --surface: #171b21; --fg: #e7eaee; --fg2: #b3bbc5; --muted: #8b94a0;
+  --rule: #2a3038; --grid: #232830; --accent: #82acd8; --zone: rgba(230,103,103,0.10);
+  --ok: #2fbf45; --bad: #e66767; --warn: #f0b429; --none: #7d8590;
+  --heat0: #1b2129; --heat1: #6f9fd0; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --fg: #e7eaee; --fg2: #b3bbc5; --muted: #8b94a0;
+  --rule: #2a3038; --grid: #232830; --accent: #82acd8; --zone: rgba(230,103,103,0.10);
+  --ok: #2fbf45; --bad: #e66767; --warn: #f0b429; --none: #7d8590;
+  --heat0: #1b2129; --heat1: #6f9fd0; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body); margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 56px; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: 0.005em; }
+h1 { font-size: 2.35rem; font-weight: 700; line-height: 1.08; }
+h2 { font-size: 1.55rem; font-weight: 600; }
+h3 { font-size: 1.12rem; font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font: 500 0.74rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.lead { color: var(--fg2); font-size: 1.05rem; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+section { display: grid; gap: 16px; }
+.head { display: grid; gap: 12px; border-bottom: 1px solid var(--rule); padding-bottom: 28px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 6px; font-size: 0.9rem; color: var(--fg2); }
+.facts b { font-family: var(--mono); font-weight: 500; color: var(--fg); }
+
+/* chips de classe */
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; white-space: nowrap; }
+.mk { width: 11px; height: 11px; display: inline-block; flex: none; }
+.mk.ok { background: var(--ok); border-radius: 50%; }
+.mk.bad { background: var(--bad); transform: rotate(45deg) scale(0.85); }
+.mk.warn { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 11px solid var(--warn); }
+.mk.none { border: 2px solid var(--none); border-radius: 50%; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+
+/* tabela resumo */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { font: 500 0.72rem/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: transparent; }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .sub { display: block; color: var(--muted); font-size: 0.8rem; }
+.lim { font-weight: 600; color: var(--accent); }
+
+/* gráficos */
+.charts { display: grid; gap: 14px; }
+.chart { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px 8px; display: grid; gap: 6px; min-width: 0; }
+.chart-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; align-items: baseline; }
+.chart-top .why { color: var(--fg2); font-size: 0.86rem; }
+.svgbox { overflow-x: auto; }
+.chart svg { width: 100%; min-width: 620px; height: auto; display: block; overflow: visible; }
+.chart svg text { font-family: var(--mono); fill: var(--muted); }
+.chart svg .lane { font-family: var(--body); fill: var(--fg2); font-size: 11.5px; }
+.chart svg .dotlbl { fill: #fff; font-size: 9px; font-weight: 500; pointer-events: none; }
+.chart svg .dotlbl.dk { fill: #1d1a12; }
+.chart svg .limlbl { fill: var(--accent); font-size: 11px; font-weight: 500; }
+.chart svg .dot { cursor: pointer; }
+.chart svg .dot:focus { outline: none; }
+.chart svg .dot:hover > :first-child, .chart svg .dot:focus > :first-child { stroke: var(--fg); stroke-width: 2; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--fg); color: var(--bg); font: 500 0.8rem/1.35 var(--mono); padding: 6px 9px; border-radius: 6px; opacity: 0; transition: opacity .08s; white-space: nowrap; }
+
+/* cartões de achados */
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+.note { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; min-width: 0; }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.kpi { font: 600 2rem/1 var(--display); color: var(--fg); }
+.kpi small { font: 500 0.95rem var(--body); color: var(--muted); }
+
+/* mapa de calor */
+.heat td.h { text-align: center; font-family: var(--mono); font-variant-numeric: tabular-nums; min-width: 84px; }
+.dir { font-family: var(--mono); color: var(--muted); font-size: 0.8rem; }
+
+.flag { display: inline-block; font: 500 0.74rem/1 var(--mono); padding: 3px 7px; border-radius: 999px; border: 1px solid currentColor; margin: 1px 4px 1px 0; white-space: nowrap; }
+.flag.bad { color: var(--bad); } .flag.warn { color: var(--warn); } .flag.ok { color: var(--ok); }
+.caveats { border-left: 3px solid var(--warn); padding-left: 14px; display: grid; gap: 6px; }
+footer { color: var(--muted); font-size: 0.82rem; border-top: 1px solid var(--rule); padding-top: 16px; }
+@media (max-width: 560px) { h1 { font-size: 1.85rem; } .wrap { padding-inline: 16px; } }
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <span class="eyebrow">Jiga Ruído Motor V2 · Olsen · resultado final · 30/09 e 01/10/2026</span>
+    <h1>Critérios Bom × Ruim da Jiga</h1>
+    <p class="lead">Comparação dos motores Bosch aprovados e reprovados na inspeção, usando as leituras da jiga nas 4 condições de acionamento (15 e 20 kHz, sentidos horário e anti-horário). O objetivo é saber quais grandezas medidas indicam um motor ruim e onde ficam os limites.</p>
+    <div class="facts">
+      <span><b>52</b> ensaios, 30/09 10:59 a 01/10 16:51</span>
+      <span><b>80</b> leituras por ensaio (20 por condição)</span>
+      <span>firmware <b>V0.04</b></span>
+      <span><b>190</b> leituras com IMU zerado, descartadas da vibração</span>
+    </div>
+    <div class="legend" aria-label="Legenda das classes">
+      <span class="chip"><i class="mk ok"></i>Aprovado (11): 5, 7, 19–25, 31, 34</span>
+      <span class="chip"><i class="mk bad"></i>Reprovado (28): 2, 3, 6, 8, 10, 12–15, 17, 27–30, 32, 33, 35–38, 40, 41, 43, 45, 49–52</span>
+      <span class="chip"><i class="mk warn"></i>Em análise (13): 1, 4, 9, 11, 16, 18, 26, 39, 42, 44, 46–48</span>
+    </div>
+  </header>
+
+  <section>
+    <span class="eyebrow">Resumo</span>
+    <h2>Motor ruim faz mais barulho, oscila mais e vibra mais</h2>
+    <p>Quatro grandezas separam os grupos de forma consistente. Os valores abaixo são a média das 4 condições do ensaio. O limite proposto é a média dos aprovados mais 3 desvios-padrão: ele vem só dos motores bons, sem ser ajustado em cima dos reprovados.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Grandeza</th><th class="num">Aprovados<br>faixa</th><th class="num">Reprovados<br>mediana · máx.</th><th class="num">Limite proposto</th><th class="num">Reprovados<br>acima</th></tr></thead>
+        <tbody id="sumBody"></tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="note">
+        <span class="eyebrow">Teste com motores novos</span>
+        <div class="kpi">17 de 21 <small>acertos em motores que a regra não tinha visto</small></div>
+        <p>Os limites foram congelados antes de cada lote e aplicados aos motores que vieram depois: 7 de 8 nos ensaios 25–33 e 10 de 13 nos ensaios 34–52. <strong>Nenhum motor aprovado foi reprovado pela regra.</strong></p>
+      </div>
+      <div class="note">
+        <span class="eyebrow">Base inteira</span>
+        <div class="kpi">33 de 39 <small>motores classificados certo</small></div>
+        <p>Se <strong>qualquer uma</strong> das 4 grandezas passar do limite, o motor é reprovado. Teste feito deixando cada motor de fora, recalculando os limites com os demais e classificando o que ficou de fora. Pega 23 dos 28 reprovados; erra 1 aprovado (ensaio 19, no limite da instabilidade).</p>
+      </div>
+      <div class="note">
+        <span class="eyebrow">O que fica de fora</span>
+        <div class="kpi">5 <small>reprovados invisíveis aos sensores</small></div>
+        <p>Os ensaios 6, 27, 38, 41 e 52 estão dentro da faixa dos aprovados em tudo. Não é questão de ajuste: nenhuma das 260 características medidas separa esses 5 dos aprovados (veja abaixo).</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Um ponto por motor</span>
+    <h2>As grandezas, motor a motor</h2>
+    <p class="muted">A linha tracejada é o limite proposto; a faixa vermelha clara é a região de reprovação. O número dentro de cada marcador é o ensaio; passe o mouse para ver o valor.</p>
+    <div class="charts" id="charts"></div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Perfis de falha</span>
+    <h2>Os reprovados não falham todos do mesmo jeito</h2>
+    <div class="grid2">
+      <div class="note"><h3>Barulho e vibração</h3><p class="mono">3 · 8 · 13 · 14 · 17 · 28 · 29 · 30 · 33 · 36 · 43 · 50</p><p>12 motores. Passam no áudio e na vibração: nível alto, ruído oscilando e tremor forte. É o perfil mais comum e o mais fácil de pegar.</p></div>
+      <div class="note"><h3>Só áudio</h3><p class="mono">12 · 15 · 32 · 35 · 45</p><p>Vibração normal, mas ruído alto ou oscilando. Só os microfones pegam este tipo.</p></div>
+      <div class="note"><h3>Só vibração</h3><p class="mono">2 · 10 · 37 · 40 · 49 · 51</p><p>Ruído normal, mas vibração dinâmica acima do limite. Só o acelerômetro pega este tipo.</p></div>
+      <div class="note"><h3>Não detectado</h3><p class="mono">6 · 27 · 38 · 41 · 52</p><p>Nenhuma grandeza fora do padrão. O defeito desses motores não aparece nos sensores atuais.</p></div>
+    </div>
+    <p>Por isso a regra precisa olhar áudio <strong>e</strong> vibração. Qualquer um deles sozinho deixaria passar parte dos reprovados: o áudio pega 17 e a vibração 18 dos 28.</p>
+  </section>
+
+  <section>
+    <span class="eyebrow">Os 5 não detectados</span>
+    <h2>Machine learning não resolve: falta informação, não modelo</h2>
+    <div class="grid2">
+      <div class="note"><h3>Busca em todas as características</h3><p>Testei 260 características (cada canal, cada condição, média, desvio, pico, diferença entre sentidos). Nenhuma deixa os 5 de um lado e os aprovados do outro; nenhuma separa nem 4 dos 5.</p></div>
+      <div class="note"><h3>Modelos treinados</h3><p>Com todas as características, os modelos acertam menos que a regra simples: regressão logística 29/39, random forest 31/39, SVM 32/39, contra 33/39 da regra. Com poucos aprovados (11), modelos complexos decoram ruído.</p></div>
+      <div class="note"><h3>O que pode ajudar</h3><ul><li>Registrar na observação qual defeito a inspeção achou nesses 5. Se for algo mecânico silencioso, a jiga não tem como ver.</li><li>Gravar o espectro do áudio (bandas de frequência), não só o nível em dB: rolamento e escova costumam aparecer em faixas específicas.</li><li>Conferir se algum deles foi reprovado por engano.</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Condições do ensaio</span>
+    <h2>Qual condição separa melhor</h2>
+    <p>Separação entre aprovados e reprovados em cada condição: 100% significa que todos os reprovados ficaram de um lado e todos os aprovados do outro; 0% significa grupos misturados. A seta mostra se o reprovado fica acima (↑) ou abaixo (↓).</p>
+    <div class="tbl-wrap">
+      <table class="heat">
+        <thead><tr><th>Grandeza</th><th class="num">15 kHz<br>horário</th><th class="num">15 kHz<br>anti-horário</th><th class="num">20 kHz<br>horário</th><th class="num">20 kHz<br>anti-horário</th></tr></thead>
+        <tbody id="heatBody"></tbody>
+      </table>
+    </div>
+    <div class="grid2">
+      <div class="note"><h3>Todas as condições contribuem</h3><p>O áudio do microfone 2 separa melhor a <strong>20 kHz horário</strong> (85%) e a vibração dinâmica a <strong>15 kHz horário</strong> (67%). Nenhuma condição sozinha pega tudo, então o roteiro com as 4 continua valendo.</p></div>
+      <div class="note"><h3>Sentido de rotação</h3><p>Os reprovados mudam mais de um sentido para o outro: o áudio difere em média <span class="mono">0,64 dB</span> entre H e AH (mediana), contra <span class="mono">0,27 dB</span> nos aprovados. Mas o sentido pior varia de motor para motor: a 20 kHz, o anti-horário foi o mais ruidoso em só 7 dos 28 reprovados. Testar os dois sentidos se justifica.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Aplicando nos pendentes</span>
+    <h2>Motores em análise pela regra</h2>
+    <p>O que a regra indica para os motores ainda sem decisão. É uma sugestão para orientar a inspeção, não substitui a avaliação.</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Ensaio</th><th>Classe atual</th><th class="num">Áudio<br>dBFS</th><th class="num">Instab.<br>dB</th><th class="num">Vib. din.<br>g</th><th class="num">Vib. Y<br>g</th><th class="num">Corrente<br>A</th><th>Indicação</th></tr></thead>
+        <tbody id="pendBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Outras observações</span>
+    <h2>Corrente, tensão e qualidade do dado</h2>
+    <div class="grid2">
+      <div class="note"><h3>Reprovados puxam menos corrente</h3><p>Mediana de <span class="mono">0,84 A</span> nos reprovados contra <span class="mono">1,01 A</span> nos aprovados. Com os aprovados entre 0,86 e 1,19 A, abaixo de ~<span class="mono">0,66 A</span> já é atípico. Testada como 5º critério, a corrente não melhorou o acerto. O motivo físico ainda precisa ser entendido, por isso fica como sinal de atenção e não entra na regra.</p></div>
+      <div class="note"><h3>Tensão acompanha a corrente</h3><p>A tensão cai quando a corrente sobe (correlação −0,93): é a queda na fonte, não uma característica do motor. Por isso ela não entra como critério, mesmo parecendo separar os grupos.</p></div>
+      <div class="note"><h3>Leituras zeradas do sensor</h3><p>190 leituras (4,6%) vieram com acelerômetro e giroscópio inteiros em zero, em 49 dos 52 ensaios. São falhas de leitura do IMU e foram descartadas; sem isso, a vibração dos motores sairia distorcida. Vale checar no firmware por que a leitura às vezes volta vazia.</p></div>
+      <div class="note"><h3>Giroscópio não separa</h3><p>A média do giroscópio é parecida nos dois grupos (magnitude média de 3,3 contra 3,2 °/s). Ele não ajuda a classificar.</p></div>
+    </div>
+  </section>
+
+  <section class="caveats">
+    <span class="eyebrow">Limites desta análise</span>
+    <p>São 39 motores classificados, só 11 aprovados, testados em dois dias. Os aprovados definem a faixa normal; com tão poucos, os limites ainda podem se mover, e o dashboard os recalcula a cada carga. O ensaio 31 tem duas condições incompletas e algumas leituras chegaram fora de ordem ou se perderam. A classificação usada é a da inspeção registrada na aba MOTORES; se algum motor for reclassificado, os números mudam.</p>
+  </section>
+
+  <footer>Gerado a partir da aba DADOS (4.151 leituras) e da aba MOTORES de 01/10/2026. Script reproduzível: <span class="mono">scripts/discriminantes.py</span> no repositório jiga-ruido-motor-olsen_V2.</footer>
+</div>
+<div class="tip" id="tip" role="status"></div>
+
+<script>
+const R = {"lim": {"audio_nivel_db": -25.446975197497608, "audio_instab_db": 0.593486748814432, "vib_dinamica_g": 0.1217891694530766, "vib_lateral_y_g": 0.06310975761814044, "corrente_a": 0.6558417864879178}, "data": [{"e": 1, "c": "Em análise", "audio_nivel_db": -26.3564, "audio_instab_db": 0.5334, "vib_dinamica_g": 0.0645, "vib_lateral_y_g": 0.0095, "corrente_a": 0.5161}, {"e": 2, "c": "Reprovado", "audio_nivel_db": -25.8682, "audio_instab_db": 0.4326, "vib_dinamica_g": 0.1388, "vib_lateral_y_g": 0.0613, "corrente_a": 0.7237}, {"e": 3, "c": "Reprovado", "audio_nivel_db": -21.9701, "audio_instab_db": 0.8146, "vib_dinamica_g": 0.2681, "vib_lateral_y_g": 0.1429, "corrente_a": 0.533}, {"e": 4, "c": "Em análise", "audio_nivel_db": -26.5328, "audio_instab_db": 0.3862, "vib_dinamica_g": 0.1313, "vib_lateral_y_g": 0.0554, "corrente_a": 1.0498}, {"e": 5, "c": "Aprovado", "audio_nivel_db": -26.2002, "audio_instab_db": 0.2647, "vib_dinamica_g": 0.0514, "vib_lateral_y_g": 0.0394, "corrente_a": 0.9789}, {"e": 6, "c": "Reprovado", "audio_nivel_db": -26.6234, "audio_instab_db": 0.4034, "vib_dinamica_g": 0.0319, "vib_lateral_y_g": 0.033, "corrente_a": 0.7399}, {"e": 7, "c": "Aprovado", "audio_nivel_db": -26.4806, "audio_instab_db": 0.4147, "vib_dinamica_g": 0.03, "vib_lateral_y_g": 0.0464, "corrente_a": 1.1357}, {"e": 8, "c": "Reprovado", "audio_nivel_db": -23.2132, "audio_instab_db": 1.0075, "vib_dinamica_g": 0.3095, "vib_lateral_y_g": 0.1857, "corrente_a": 0.7511}, {"e": 9, "c": "Em análise", "audio_nivel_db": -24.9367, "audio_instab_db": 0.3837, "vib_dinamica_g": 0.1537, "vib_lateral_y_g": 0.0648, "corrente_a": 0.6091}, {"e": 10, "c": "Reprovado", "audio_nivel_db": -25.4675, "audio_instab_db": 0.4405, "vib_dinamica_g": 0.159, "vib_lateral_y_g": 0.0595, "corrente_a": 0.6767}, {"e": 11, "c": "Em análise", "audio_nivel_db": -26.3665, "audio_instab_db": 0.3674, "vib_dinamica_g": 0.0223, "vib_lateral_y_g": 0.0156, "corrente_a": 0.8066}, {"e": 12, "c": "Reprovado", "audio_nivel_db": -25.0047, "audio_instab_db": 1.1132, "vib_dinamica_g": 0.0533, "vib_lateral_y_g": 0.0473, "corrente_a": 0.7623}, {"e": 13, "c": "Reprovado", "audio_nivel_db": -19.6768, "audio_instab_db": 1.6241, "vib_dinamica_g": 0.1575, "vib_lateral_y_g": 0.1072, "corrente_a": 1.0555}, {"e": 14, "c": "Reprovado", "audio_nivel_db": -22.4106, "audio_instab_db": 0.7238, "vib_dinamica_g": 0.4064, "vib_lateral_y_g": 0.2454, "corrente_a": 0.8187}, {"e": 15, "c": "Reprovado", "audio_nivel_db": -23.6851, "audio_instab_db": 0.4096, "vib_dinamica_g": 0.0786, "vib_lateral_y_g": 0.0273, "corrente_a": 0.9666}, {"e": 16, "c": "Em análise", "audio_nivel_db": -26.346, "audio_instab_db": 0.3178, "vib_dinamica_g": 0.0334, "vib_lateral_y_g": 0.0305, "corrente_a": 0.8292}, {"e": 17, "c": "Reprovado", "audio_nivel_db": -23.1961, "audio_instab_db": 0.9142, "vib_dinamica_g": 0.3122, "vib_lateral_y_g": 0.1907, "corrente_a": 0.8434}, {"e": 18, "c": "Em análise", "audio_nivel_db": -25.7683, "audio_instab_db": 0.4279, "vib_dinamica_g": 0.0176, "vib_lateral_y_g": 0.0232, "corrente_a": 1.0069}, {"e": 19, "c": "Aprovado", "audio_nivel_db": -25.8999, "audio_instab_db": 0.5256, "vib_dinamica_g": 0.0854, "vib_lateral_y_g": 0.0294, "corrente_a": 0.8925}, {"e": 20, "c": "Aprovado", "audio_nivel_db": -25.8847, "audio_instab_db": 0.3504, "vib_dinamica_g": 0.0381, "vib_lateral_y_g": 0.0412, "corrente_a": 0.8607}, {"e": 21, "c": "Aprovado", "audio_nivel_db": -26.1849, "audio_instab_db": 0.261, "vib_dinamica_g": 0.082, "vib_lateral_y_g": 0.0461, "corrente_a": 0.875}, {"e": 22, "c": "Aprovado", "audio_nivel_db": -26.1885, "audio_instab_db": 0.2285, "vib_dinamica_g": 0.0637, "vib_lateral_y_g": 0.0156, "corrente_a": 0.909}, {"e": 23, "c": "Aprovado", "audio_nivel_db": -26.0804, "audio_instab_db": 0.2408, "vib_dinamica_g": 0.0691, "vib_lateral_y_g": 0.0244, "corrente_a": 1.1851}, {"e": 24, "c": "Aprovado", "audio_nivel_db": -25.6735, "audio_instab_db": 0.2466, "vib_dinamica_g": 0.057, "vib_lateral_y_g": 0.0205, "corrente_a": 1.0244}, {"e": 25, "c": "Aprovado", "audio_nivel_db": -26.1154, "audio_instab_db": 0.1753, "vib_dinamica_g": 0.0297, "vib_lateral_y_g": 0.0242, "corrente_a": 1.0115}, {"e": 26, "c": "Em análise", "audio_nivel_db": -26.4661, "audio_instab_db": 0.1673, "vib_dinamica_g": 0.0613, "vib_lateral_y_g": 0.0229, "corrente_a": 1.2371}, {"e": 27, "c": "Reprovado", "audio_nivel_db": -25.9694, "audio_instab_db": 0.2143, "vib_dinamica_g": 0.0428, "vib_lateral_y_g": 0.0222, "corrente_a": 1.2148}, {"e": 28, "c": "Reprovado", "audio_nivel_db": -23.0955, "audio_instab_db": 0.5536, "vib_dinamica_g": 0.3483, "vib_lateral_y_g": 0.2128, "corrente_a": 0.5988}, {"e": 29, "c": "Reprovado", "audio_nivel_db": -25.28, "audio_instab_db": 0.3005, "vib_dinamica_g": 0.1494, "vib_lateral_y_g": 0.0879, "corrente_a": 0.6732}, {"e": 30, "c": "Reprovado", "audio_nivel_db": -24.8008, "audio_instab_db": 0.3223, "vib_dinamica_g": 0.1519, "vib_lateral_y_g": 0.0938, "corrente_a": 0.6051}, {"e": 31, "c": "Aprovado", "audio_nivel_db": -26.304, "audio_instab_db": 0.2955, "vib_dinamica_g": 0.0194, "vib_lateral_y_g": 0.0293, "corrente_a": 1.0995}, {"e": 32, "c": "Reprovado", "audio_nivel_db": -25.4885, "audio_instab_db": 0.6602, "vib_dinamica_g": 0.068, "vib_lateral_y_g": 0.0207, "corrente_a": 0.8302}, {"e": 33, "c": "Reprovado", "audio_nivel_db": -23.4109, "audio_instab_db": 0.56, "vib_dinamica_g": 0.299, "vib_lateral_y_g": 0.1655, "corrente_a": 0.682}, {"e": 34, "c": "Aprovado", "audio_nivel_db": -26.1796, "audio_instab_db": 0.2749, "vib_dinamica_g": 0.0722, "vib_lateral_y_g": 0.0221, "corrente_a": 1.1522}, {"e": 35, "c": "Reprovado", "audio_nivel_db": -24.5376, "audio_instab_db": 0.6471, "vib_dinamica_g": 0.1177, "vib_lateral_y_g": 0.0421, "corrente_a": 0.8302}, {"e": 36, "c": "Reprovado", "audio_nivel_db": -25.3126, "audio_instab_db": 0.4142, "vib_dinamica_g": 0.1561, "vib_lateral_y_g": 0.0585, "corrente_a": 0.8669}, {"e": 37, "c": "Reprovado", "audio_nivel_db": -26.0329, "audio_instab_db": 0.3308, "vib_dinamica_g": 0.1432, "vib_lateral_y_g": 0.0288, "corrente_a": 1.0981}, {"e": 38, "c": "Reprovado", "audio_nivel_db": -26.0232, "audio_instab_db": 0.5016, "vib_dinamica_g": 0.0283, "vib_lateral_y_g": 0.0254, "corrente_a": 0.7005}, {"e": 39, "c": "Em análise", "audio_nivel_db": -26.2921, "audio_instab_db": 0.3222, "vib_dinamica_g": 0.0717, "vib_lateral_y_g": 0.016, "corrente_a": 1.242}, {"e": 40, "c": "Reprovado", "audio_nivel_db": -26.3848, "audio_instab_db": 0.301, "vib_dinamica_g": 0.1248, "vib_lateral_y_g": 0.0277, "corrente_a": 0.9385}, {"e": 41, "c": "Reprovado", "audio_nivel_db": -25.8281, "audio_instab_db": 0.2397, "vib_dinamica_g": 0.0279, "vib_lateral_y_g": 0.0295, "corrente_a": 1.1402}, {"e": 42, "c": "Em análise", "audio_nivel_db": -24.9771, "audio_instab_db": 0.3745, "vib_dinamica_g": 0.0422, "vib_lateral_y_g": 0.0265, "corrente_a": 0.7207}, {"e": 43, "c": "Reprovado", "audio_nivel_db": -21.9183, "audio_instab_db": 0.6531, "vib_dinamica_g": 0.1388, "vib_lateral_y_g": 0.0245, "corrente_a": 0.9257}, {"e": 44, "c": "Em análise", "audio_nivel_db": -25.7927, "audio_instab_db": 0.2587, "vib_dinamica_g": 0.1162, "vib_lateral_y_g": 0.0124, "corrente_a": 0.9081}, {"e": 45, "c": "Reprovado", "audio_nivel_db": -23.1975, "audio_instab_db": 0.4818, "vib_dinamica_g": 0.0836, "vib_lateral_y_g": 0.0249, "corrente_a": 0.8777}, {"e": 46, "c": "Em análise", "audio_nivel_db": -25.8284, "audio_instab_db": 0.2982, "vib_dinamica_g": 0.156, "vib_lateral_y_g": 0.0138, "corrente_a": 0.6223}, {"e": 47, "c": "Em análise", "audio_nivel_db": -25.9951, "audio_instab_db": 0.3037, "vib_dinamica_g": 0.1244, "vib_lateral_y_g": 0.0353, "corrente_a": 0.7108}, {"e": 48, "c": "Em análise", "audio_nivel_db": -25.6495, "audio_instab_db": 0.2569, "vib_dinamica_g": 0.1628, "vib_lateral_y_g": 0.0382, "corrente_a": 0.9724}, {"e": 49, "c": "Reprovado", "audio_nivel_db": -25.5815, "audio_instab_db": 0.4238, "vib_dinamica_g": 0.2481, "vib_lateral_y_g": 0.0281, "corrente_a": 0.8576}, {"e": 50, "c": "Reprovado", "audio_nivel_db": -25.4193, "audio_instab_db": 0.943, "vib_dinamica_g": 0.1483, "vib_lateral_y_g": 0.0497, "corrente_a": 1.017}, {"e": 51, "c": "Reprovado", "audio_nivel_db": -25.892, "audio_instab_db": 0.2239, "vib_dinamica_g": 0.1519, "vib_lateral_y_g": 0.0252, "corrente_a": 1.1776}, {"e": 52, "c": "Reprovado", "audio_nivel_db": -25.5906, "audio_instab_db": 0.2533, "vib_dinamica_g": 0.0844, "vib_lateral_y_g": 0.0339, "corrente_a": 1.0089}], "auc": {"rows": ["Nível de áudio (mic 2)", "Nível de áudio (mic 1)", "Instabilidade do áudio (mic 2)", "Vibração dinâmica", "Vibração lateral Y", "Vibração lateral X", "Corrente"], "cols": ["H_15k", "AH_15k", "H_20k", "AH_20k"], "v": [[0.864, 0.802, 0.925, 0.831], [0.773, 0.802, 0.864, 0.893], [0.737, 0.779, 0.86, 0.828], [0.834, 0.789, 0.705, 0.821], [0.682, 0.721, 0.782, 0.705], [0.698, 0.659, 0.688, 0.708], [0.237, 0.218, 0.263, 0.227]]}};
+const L = R.lim;
+const CLS = {
+  "Aprovado": { k: "ok", lane: 0 }, "Reprovado": { k: "bad", lane: 1 },
+  "Em análise": { k: "warn", lane: 2 }, "Sem classificação": { k: "none", lane: 3 },
+};
+const LANES = ["Aprovado", "Reprovado", "Em análise", "Sem classif."];
+const fmt = (v, d) => v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+const IND = [
+  { key: "audio_nivel_db", nome: "Nível de áudio", un: "dBFS", d: 1, lado: "acima", why: "média dos 2 microfones: motor ruim é mais barulhento" },
+  { key: "audio_instab_db", nome: "Instabilidade do áudio", un: "dB", d: 2, lado: "acima", why: "desvio-padrão do nível dentro de cada condição: ruído que oscila" },
+  { key: "vib_dinamica_g", nome: "Vibração dinâmica", un: "g", d: 3, lado: "acima", why: "desvio-padrão da aceleração resultante: tremor do motor" },
+  { key: "vib_lateral_y_g", nome: "Vibração lateral Y", un: "g", d: 3, lado: "acima", why: "média do eixo Y: balanço lateral" },
+  { key: "corrente_a", nome: "Corrente média", un: "A", d: 2, lado: "abaixo", why: "sinal de atenção (não entra na regra): reprovados tendem a puxar menos" },
+];
+
+// ---- tabela resumo
+(function () {
+  const ap = R.data.filter((r) => r.c === "Aprovado"), rp = R.data.filter((r) => r.c === "Reprovado");
+  const med = (a) => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  document.getElementById("sumBody").innerHTML = IND.map((i) => {
+    const a = ap.map((r) => r[i.key]), r = rp.map((x) => x[i.key]);
+    const acima = i.lado === "acima" ? r.filter((v) => v > L[i.key]).length : r.filter((v) => v < L[i.key]).length;
+    const ext = i.lado === "acima" ? Math.max(...r) : Math.min(...r);
+    return `<tr><td><strong>${i.nome}</strong><span class="sub">${i.why}</span></td>
+      <td class="num">${fmt(Math.min(...a), i.d)} a ${fmt(Math.max(...a), i.d)} ${i.un}</td>
+      <td class="num">${fmt(med(r), i.d)} · ${fmt(ext, i.d)}</td>
+      <td class="num lim">${i.lado === "acima" ? "&gt;" : "&lt;"} ${fmt(L[i.key], i.d)} ${i.un}</td>
+      <td class="num">${acima} de ${r.length}${i.lado === "abaixo" ? "<span class=\"sub\">atenção</span>" : ""}</td></tr>`;
+  }).join("");
+})();
+
+// ---- gráficos de pontos
+const tip = document.getElementById("tip");
+function showTip(ev, txt) {
+  tip.textContent = txt; tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  let x = (ev.clientX ?? 0) + 12, y = (ev.clientY ?? 0) - r.height - 10;
+  if (x + r.width > innerWidth - 8) x = innerWidth - r.width - 8;
+  if (y < 8) y = (ev.clientY ?? 0) + 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip() { tip.style.opacity = 0; }
+
+function niceTicks(lo, hi, n = 6) {
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || 10 * mag;
+  const t = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) t.push(+v.toFixed(10));
+  return { t, step };
+}
+
+function chart(ind) {
+  const W = 960, lane = 48, top = 24, H = top + lane * 4 + 34, x0 = 110, x1 = W - 20;
+  const vals = R.data.map((r) => r[ind.key]).concat([L[ind.key]]);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
+  const { t } = niceTicks(lo, hi);
+  lo = Math.min(lo, t[0]); hi = Math.max(hi, t[t.length - 1]);
+  const X = (v) => x0 + (v - lo) / (hi - lo) * (x1 - x0);
+  const lx = X(L[ind.key]);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${ind.nome} por motor">`;
+  // zona de reprovação / atenção
+  s += ind.lado === "acima"
+    ? `<rect x="${lx}" y="${top - 6}" width="${x1 - lx}" height="${lane * 4 + 6}" fill="var(--zone)"/>`
+    : `<rect x="${x0}" y="${top - 6}" width="${lx - x0}" height="${lane * 4 + 6}" fill="var(--zone)"/>`;
+  // grade e eixo
+  t.forEach((v) => {
+    const x = X(v);
+    s += `<line x1="${x}" x2="${x}" y1="${top - 6}" y2="${top + lane * 4}" stroke="var(--grid)" stroke-width="1"/>`;
+    s += `<text x="${x}" y="${top + lane * 4 + 16}" font-size="11" text-anchor="middle">${fmt(v, ind.d > 2 ? 2 : ind.d)}</text>`;
+  });
+  s += `<text x="${x1}" y="${top + lane * 4 + 30}" font-size="11" text-anchor="end">${ind.un}</text>`;
+  LANES.forEach((n, i) => {
+    const y = top + lane * i + lane / 2;
+    s += `<line x1="${x0}" x2="${x1}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-dasharray="2 4"/>`;
+    s += `<text class="lane" x="0" y="${y + 4}">${n}</text>`;
+  });
+  // limite
+  s += `<line x1="${lx}" x2="${lx}" y1="${top - 10}" y2="${top + lane * 4}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  const anchor = lx > x1 - 90 ? "end" : "start", ldx = anchor === "end" ? -6 : 6;
+  s += `<text class="limlbl" x="${lx + ldx}" y="${top - 12}" text-anchor="${anchor}">limite ${fmt(L[ind.key], ind.d)}</text>`;
+  // pontos: empilha na vertical quando ficam muito próximos
+  const byLane = [[], [], [], []];
+  R.data.forEach((r) => byLane[CLS[r.c].lane].push(r));
+  byLane.forEach((arr, li) => {
+    arr.sort((a, b) => a[ind.key] - b[ind.key]);
+    const placed = [];
+    arr.forEach((r) => {
+      const x = X(r[ind.key]);
+      let off = 0; const offs = [0, -12, 12, -22, 22];
+      for (const o of offs) { if (!placed.some((p) => Math.abs(p.x - x) < 19 && p.o === o)) { off = o; break; } }
+      placed.push({ x, o: off });
+      const y = top + lane * li + lane / 2 + off;
+      const k = CLS[r.c].k;
+      const col = { ok: "var(--ok)", bad: "var(--bad)", warn: "var(--warn)", none: "var(--none)" }[k];
+      let shape;
+      if (k === "ok") shape = `<circle cx="${x}" cy="${y}" r="8.5" fill="${col}" stroke="var(--surface)" stroke-width="1.5"/>`;
+      else if (k === "bad") shape = `<rect x="${x - 7.5}" y="${y - 7.5}" width="15" height="15" rx="2" transform="rotate(45 ${x} ${y})" fill="${col}" stroke="var(--surface)" stroke-width="1.5"/>`;
+      else if (k === "warn") shape = `<path d="M${x} ${y - 9.5} L${x + 9.5} ${y + 7} L${x - 9.5} ${y + 7} Z" fill="${col}" stroke="var(--surface)" stroke-width="1.5"/>`;
+      else shape = `<circle cx="${x}" cy="${y}" r="7.5" fill="var(--surface)" stroke="${col}" stroke-width="2.5"/>`;
+      const lbl = k === "none" ? `<text x="${x}" y="${y + 3.2}" font-size="9" text-anchor="middle" style="fill:var(--fg2)">${r.e}</text>`
+        : `<text class="dotlbl${k === "warn" ? " dk" : ""}" x="${x}" y="${y + (k === "warn" ? 5 : 3.2)}" text-anchor="middle">${r.e}</text>`;
+      const txt = `Ensaio ${r.e} · ${r.c} · ${fmt(r[ind.key], ind.d)} ${ind.un}`;
+      s += `<g class="dot" tabindex="0" data-tip="${txt}">${shape}${lbl}</g>`;
+    });
+  });
+  s += "</svg>";
+  return `<div class="chart"><div class="chart-top"><h3>${ind.nome}</h3><span class="why">${ind.why}</span></div><div class="svgbox">${s}</div></div>`;
+}
+const box = document.getElementById("charts");
+box.innerHTML = IND.map(chart).join("");
+box.querySelectorAll(".dot").forEach((g) => {
+  g.addEventListener("mousemove", (e) => showTip(e, g.dataset.tip));
+  g.addEventListener("mouseleave", hideTip);
+  g.addEventListener("focus", () => { const r = g.getBoundingClientRect(); showTip({ clientX: r.right, clientY: r.top }, g.dataset.tip); });
+  g.addEventListener("blur", hideTip);
+});
+
+// ---- mapa de calor
+(function () {
+  const nomes = R.auc.rows;
+  const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const mix = (a, b, t) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",")})`; };
+  function draw() {
+    const h0 = cssv("--heat0"), h1 = cssv("--heat1");
+    document.getElementById("heatBody").innerHTML = nomes.map((n, i) => {
+      const row = R.auc.v[i];
+      const up = row.reduce((a, b) => a + b, 0) / row.length >= 0.5;
+      return `<tr><td>${n} <span class="dir">${up ? "↑" : "↓"}</span></td>` + row.map((a) => {
+        const sep = Math.abs(a - 0.5) * 2;
+        const bg = mix(h0, h1, Math.pow(sep, 1.6));
+        const fg = sep > 0.72 ? "#fff" : "var(--fg)";
+        return `<td class="h" style="background:${bg};color:${fg}">${Math.round(sep * 100)}%</td>`;
+      }).join("") + "</tr>";
+    }).join("");
+  }
+  draw();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+
+// ---- pendentes
+(function () {
+  const rule = ["audio_nivel_db", "audio_instab_db", "vib_dinamica_g", "vib_lateral_y_g"];
+  const curto = { audio_nivel_db: "áudio alto", audio_instab_db: "áudio instável", vib_dinamica_g: "vibração", vib_lateral_y_g: "vibração lateral" };
+  const pend = R.data.filter((r) => r.c === "Em análise" || r.c === "Sem classificação");
+  document.getElementById("pendBody").innerHTML = pend.map((r) => {
+    const fl = rule.filter((k) => r[k] > L[k]);
+    const cor = r.corrente_a < L.corrente_a;
+    const cell = (k, d) => `<td class="num" style="${(k === "corrente_a" ? cor : r[k] > L[k]) ? "color:var(--bad);font-weight:600" : ""}">${fmt(r[k], d)}</td>`;
+    const ind = fl.length
+      ? `<span class="flag bad">tende a reprovado</span>${fl.map((k) => `<span class="flag bad">${curto[k]}</span>`).join("")}`
+      : `<span class="flag ok">perfil de aprovado</span>`;
+    const att = cor ? `<span class="flag warn">corrente baixa</span>` : "";
+    const cls = CLS[r.c].k;
+    return `<tr><td class="mono">${r.e}</td><td><span class="chip"><i class="mk ${cls}"></i>${r.c}</span></td>${cell("audio_nivel_db", 1)}${cell("audio_instab_db", 2)}${cell("vib_dinamica_g", 3)}${cell("vib_lateral_y_g", 3)}${cell("corrente_a", 2)}<td>${ind}${att}</td></tr>`;
+  }).join("");
+})();
+</script>
+
+</body>
+</html>

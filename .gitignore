@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .DS_Store
 .venv/
+
+# saídas do pipeline (regeneráveis); classificacao.csv é lida pelo dashboard
+data/*.csv
+data/*.json
+!data/classificacao.csv

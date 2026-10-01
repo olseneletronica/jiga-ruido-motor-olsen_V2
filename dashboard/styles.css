@@ -121,6 +121,12 @@ select {
 .badge.APROVADO .dot { background: var(--good); }
 .badge.REPROVADO .dot { background: var(--critical); }
 .badge.EM_ANALISE .dot { background: var(--warning); }
+.badge.AUTO_OK .dot { background: var(--good); }
+.badge.AUTO_REP .dot { background: var(--critical); }
+.small { font-size: 0.8rem; }
+.auto-sum { display: flex; flex-wrap: wrap; gap: 12px 40px; margin-bottom: 10px; }
+.auto-sum .k { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.auto-sum .v { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
 .cdot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 2px; background: var(--muted); }
 .cdot.APROVADO { background: var(--good); }
 .cdot.REPROVADO { background: var(--critical); }

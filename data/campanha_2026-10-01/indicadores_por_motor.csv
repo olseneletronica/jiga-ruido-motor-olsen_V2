@@ -1,0 +1,53 @@
+ensaio,audio_nivel_db,audio_instab_db,vib_dinamica_g,vib_lateral_y_g,corrente_a,classificacao,bandeiras,corrente_baixa,indicacao
+1,-26.3564,0.5334,0.0645,0.0095,0.5161,Em análise,,True,perfil de aprovado
+2,-25.8682,0.4326,0.1388,0.0613,0.7237,Reprovado,vib_dinamica_g,False,tende a reprovado
+3,-21.9701,0.8146,0.2681,0.1429,0.533,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g,vib_lateral_y_g",True,tende a reprovado
+4,-26.5328,0.3862,0.1313,0.0554,1.0498,Em análise,vib_dinamica_g,False,tende a reprovado
+5,-26.2002,0.2647,0.0514,0.0394,0.9789,Aprovado,,False,perfil de aprovado
+6,-26.6234,0.4034,0.0319,0.033,0.7399,Reprovado,,False,perfil de aprovado
+7,-26.4806,0.4147,0.03,0.0464,1.1357,Aprovado,,False,perfil de aprovado
+8,-23.2133,1.0075,0.3095,0.1857,0.7511,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g,vib_lateral_y_g",False,tende a reprovado
+9,-24.9367,0.3837,0.1537,0.0648,0.6091,Em análise,"audio_nivel_db,vib_dinamica_g,vib_lateral_y_g",True,tende a reprovado
+10,-25.4675,0.4405,0.159,0.0595,0.6767,Reprovado,vib_dinamica_g,False,tende a reprovado
+11,-26.3665,0.3674,0.0223,0.0156,0.8066,Em análise,,False,perfil de aprovado
+12,-25.0047,1.1132,0.0533,0.0473,0.7623,Reprovado,"audio_nivel_db,audio_instab_db",False,tende a reprovado
+13,-19.6768,1.6241,0.1575,0.1072,1.0555,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g,vib_lateral_y_g",False,tende a reprovado
+14,-22.4106,0.7238,0.4064,0.2454,0.8187,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g,vib_lateral_y_g",False,tende a reprovado
+15,-23.6851,0.4096,0.0786,0.0273,0.9666,Reprovado,audio_nivel_db,False,tende a reprovado
+16,-26.346,0.3178,0.0334,0.0305,0.8292,Em análise,,False,perfil de aprovado
+17,-23.1961,0.9142,0.3122,0.1907,0.8434,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g,vib_lateral_y_g",False,tende a reprovado
+18,-25.7683,0.4279,0.0176,0.0232,1.0069,Em análise,,False,perfil de aprovado
+19,-25.8999,0.5256,0.0854,0.0294,0.8925,Aprovado,,False,perfil de aprovado
+20,-25.8847,0.3504,0.0381,0.0412,0.8607,Aprovado,,False,perfil de aprovado
+21,-26.1849,0.261,0.082,0.0461,0.875,Aprovado,,False,perfil de aprovado
+22,-26.1885,0.2285,0.0637,0.0156,0.909,Aprovado,,False,perfil de aprovado
+23,-26.0804,0.2408,0.0691,0.0244,1.1851,Aprovado,,False,perfil de aprovado
+24,-25.6735,0.2466,0.057,0.0205,1.0244,Aprovado,,False,perfil de aprovado
+25,-26.1154,0.1753,0.0297,0.0242,1.0115,Aprovado,,False,perfil de aprovado
+26,-26.4661,0.1673,0.0613,0.0229,1.2371,Em análise,,False,perfil de aprovado
+27,-25.9694,0.2143,0.0428,0.0222,1.2148,Reprovado,,False,perfil de aprovado
+28,-23.0955,0.5536,0.3483,0.2128,0.5988,Reprovado,"audio_nivel_db,vib_dinamica_g,vib_lateral_y_g",True,tende a reprovado
+29,-25.28,0.3005,0.1494,0.0879,0.6732,Reprovado,"audio_nivel_db,vib_dinamica_g,vib_lateral_y_g",False,tende a reprovado
+30,-24.8008,0.3223,0.1519,0.0938,0.6051,Reprovado,"audio_nivel_db,vib_dinamica_g,vib_lateral_y_g",True,tende a reprovado
+31,-26.304,0.2955,0.0194,0.0293,1.0995,Aprovado,,False,perfil de aprovado
+32,-25.4885,0.6602,0.068,0.0207,0.8302,Reprovado,audio_instab_db,False,tende a reprovado
+33,-23.4109,0.56,0.299,0.1655,0.682,Reprovado,"audio_nivel_db,vib_dinamica_g,vib_lateral_y_g",False,tende a reprovado
+34,-26.1796,0.2749,0.0722,0.0221,1.1522,Aprovado,,False,perfil de aprovado
+35,-24.5376,0.6471,0.1177,0.0421,0.8302,Reprovado,"audio_nivel_db,audio_instab_db",False,tende a reprovado
+36,-25.3126,0.4142,0.1561,0.0585,0.8669,Reprovado,"audio_nivel_db,vib_dinamica_g",False,tende a reprovado
+37,-26.0329,0.3308,0.1432,0.0288,1.0981,Reprovado,vib_dinamica_g,False,tende a reprovado
+38,-26.0232,0.5016,0.0283,0.0254,0.7005,Reprovado,,False,perfil de aprovado
+39,-26.2921,0.3222,0.0717,0.016,1.2419,Em análise,,False,perfil de aprovado
+40,-26.3848,0.301,0.1248,0.0277,0.9385,Reprovado,vib_dinamica_g,False,tende a reprovado
+41,-25.8281,0.2397,0.0279,0.0295,1.1402,Reprovado,,False,perfil de aprovado
+42,-24.9771,0.3745,0.0422,0.0265,0.7206,Em análise,audio_nivel_db,False,tende a reprovado
+43,-21.9183,0.6531,0.1388,0.0245,0.9257,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g",False,tende a reprovado
+44,-25.7927,0.2587,0.1162,0.0124,0.9081,Em análise,,False,perfil de aprovado
+45,-23.1975,0.4818,0.0836,0.0249,0.8777,Reprovado,audio_nivel_db,False,tende a reprovado
+46,-25.8284,0.2982,0.156,0.0138,0.6223,Em análise,vib_dinamica_g,True,tende a reprovado
+47,-25.9951,0.3037,0.1244,0.0353,0.7108,Em análise,vib_dinamica_g,False,tende a reprovado
+48,-25.6495,0.2569,0.1628,0.0382,0.9724,Em análise,vib_dinamica_g,False,tende a reprovado
+49,-25.5815,0.4238,0.2481,0.0281,0.8576,Reprovado,vib_dinamica_g,False,tende a reprovado
+50,-25.4193,0.943,0.1483,0.0497,1.017,Reprovado,"audio_nivel_db,audio_instab_db,vib_dinamica_g",False,tende a reprovado
+51,-25.892,0.2239,0.1519,0.0252,1.1776,Reprovado,vib_dinamica_g,False,tende a reprovado
+52,-25.5906,0.2533,0.0844,0.0339,1.0089,Reprovado,,False,perfil de aprovado

@@ -52,6 +52,13 @@ EXPECTED_COLUMNS = [
 ]
 
 TEXT_COLUMNS = ["timestamp", "firmware", "sentido"]
+
+# Canais do IMU. Quando TODOS vêm 0 na mesma leitura, é falha de leitura do
+# sensor (visto em ~4% das leituras do firmware V0.04): tratados como ausentes.
+IMU_COLUMNS = [
+    "accel_x_g", "accel_y_g", "accel_z_g", "accel_resultante_g",
+    "gyro_x_dps", "gyro_y_dps", "gyro_z_dps",
+]
 NUMERIC_COLUMNS = [c for c in EXPECTED_COLUMNS if c not in TEXT_COLUMNS]
 
 SIGNAL_COLUMNS = [

@@ -1,6 +1,7 @@
 // Jiga Ruído Motor V2 — Olsen — dashboard
-// Lê a planilha publicada (TSV) direto do Google. Com ?fonte=exemplo usa os
-// dados sintéticos de data/exemplo/raw_exemplo.tsv.
+// Lê a planilha publicada direto do Google. Com ?fonte=<nome> usa arquivos
+// fixos do repositório (CONFIG.FONTES): "exemplo" = dados sintéticos;
+// "campanha_2026-10-01" = exportação congelada da campanha de 30/09–01/10.
 // A classificação (data/classificacao.csv) é opcional: vem do pipeline Python.
 
 // ============================================================================
@@ -8,7 +9,7 @@
 // ============================================================================
 // Versão do dashboard. Ao publicar mudanças, atualize aqui E no index.html
 // (?v=... do app.js e do styles.css), para o navegador não usar arquivo em cache.
-const VERSAO = "2026.09.30-3";
+const VERSAO = "2026.10.01-2";
 
 const CONFIG = {
   // Leitura AO VIVO da aba DADOS (onde o ESP32 grava). Exige compartilhamento
@@ -26,8 +27,12 @@ const CONFIG = {
   // URL do app da Web do Apps Script que grava na aba MOTORES
   // (ver apps-script/cadastro_motores.gs). Vazio = formulário desativado.
   MOTORES_WRITE_URL: "https://script.google.com/macros/s/AKfycbyFvojPXspkoJNJOpHwEKKKehGACw-Kj54iGgbK0b1dLtfzMvk_2lazoiv3F3WAHYADag/exec",
-  EXEMPLO_URL: "../data/exemplo/raw_exemplo.tsv",
-  EXEMPLO_MOTORES_URL: "../data/exemplo/motores_exemplo.tsv",
+  FONTES: {
+    "exemplo": { nome: "dados de exemplo (sintéticos)",
+      dados: "../data/exemplo/raw_exemplo.tsv", motores: "../data/exemplo/motores_exemplo.tsv" },
+    "campanha_2026-10-01": { nome: "campanha 30/09–01/10/2026 (congelada)",
+      dados: "../data/campanha_2026-10-01/dados.tsv", motores: "../data/campanha_2026-10-01/motores.tsv" },
+  },
   CLASSIF_URL: "../data/classificacao.csv",
   FREQS: [15000, 20000],
   SENTIDOS: ["H", "AH"],
@@ -41,6 +46,10 @@ const TEXT_COLUMNS = ["timestamp", "firmware", "sentido"];
 
 // stat = estatística usada no resumo e na comparação de sentidos
 // modo = "rel" (diferença %) ou "db" (diferença absoluta em dB)
+// IMU inteiro zerado numa leitura = falha de leitura do sensor (~4% no
+// firmware V0.04). Esses valores viram ausentes para não distorcer a vibração.
+const IMU_KEYS = ["accel_x_g", "accel_y_g", "accel_z_g", "accel_resultante_g", "gyro_x_dps", "gyro_y_dps", "gyro_z_dps"];
+
 const METRICS = [
   { key: "tensao_v", label: "Tensão", unit: "V", group: "Elétrica", stat: "mean", modo: "rel", dec: 2 },
   { key: "corrente_a", label: "Corrente", unit: "A", group: "Elétrica", stat: "mean", modo: "rel", dec: 3 },
@@ -127,7 +136,7 @@ function stats(vals) {
 // Carga de dados
 // ============================================================================
 const params = new URLSearchParams(location.search);
-const usandoExemplo = params.get("fonte") === "exemplo";
+const fonteFixa = CONFIG.FONTES[params.get("fonte")] || null;
 
 const withBuster = (u) => `${u}${u.includes("?") ? "&" : "?"}_=${Date.now()}`;
 
@@ -152,14 +161,15 @@ async function fetchTable(url, delimiter, ms = 30000) {
 
 async function loadRows() {
   let parsed;
-  if (usandoExemplo) {
-    parsed = await fetchTable(CONFIG.EXEMPLO_URL, "\t");
+  if (fonteFixa) {
+    parsed = await fetchTable(fonteFixa.dados, "\t");
   } else {
     parsed = await fetchTable(CONFIG.LIVE_URL, ",");
   }
   return parsed.map((r) => {
     const o = { timestamp: r.timestamp, firmware: r.firmware, sentido: normalizaSentido(r.sentido) };
     NUMERIC_COLUMNS.forEach((c) => (o[c] = toNumberBR(r[c])));
+    if (IMU_KEYS.every((k) => o[k] === 0)) IMU_KEYS.forEach((k) => (o[k] = NaN));
     o.frequencia_hz = Math.round(o.frequencia_hz);
     o.date = parseTimestamp(r.timestamp);
     return o;
@@ -194,8 +204,8 @@ function motoresFromRows(data) {
 }
 
 async function loadMotores() {
-  if (usandoExemplo) {
-    try { return motoresFromRows(await fetchTable(CONFIG.EXEMPLO_MOTORES_URL, "\t")); } catch { return {}; }
+  if (fonteFixa) {
+    try { return motoresFromRows(await fetchTable(fonteFixa.motores, "\t")); } catch { return {}; }
   }
   // 1) Apps Script: texto exato das células, sem adivinhação de tipo.
   if (CONFIG.MOTORES_WRITE_URL) {
@@ -365,8 +375,8 @@ function setupMotorForm() {
   const lembrar = document.getElementById("fLembrar");
   try { const t = localStorage.getItem(TOKEN_KEY); if (t) { tokenIn.value = t; lembrar.checked = true; } } catch {}
 
-  const aviso = usandoExemplo
-    ? "Modo demonstração: o cadastro não é gravado na planilha."
+  const aviso = fonteFixa
+    ? `Lendo ${fonteFixa.nome}: o cadastro não é gravado na planilha.`
     : !CONFIG.MOTORES_WRITE_URL
       ? "Cadastro ainda não configurado: falta a URL do Apps Script em CONFIG.MOTORES_WRITE_URL (ver README)."
       : "";
@@ -423,6 +433,7 @@ const classeBadge = (c) => (c ? badge(classeKey(c), esc(c)) : '<span class="mute
 const STATUS_TXT = { OK: "✓ OK", ATENCAO: "! Atenção", FALHA_PROVAVEL: "✕ Falha provável" };
 
 function renderInfo(e) {
+  recalcAuto();
   const c = classif[e.id];
   // Sem classificacao.csv (pipeline ainda não rodou) o selo simplesmente some.
   const temClassif = Object.keys(classif).length > 0;
@@ -440,6 +451,7 @@ function renderInfo(e) {
   const items = [
     ["Motor", m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'],
     ["Classificação", classeBadge(m && m.classe)],
+    ["Indicação automática", autoBadge(e.id) + (autoDiverge(e.id) ? ' <span class="muted small">≠ inspeção</span>' : "")],
     ...(m && m.obs ? [["Observação", esc(m.obs)]] : []),
     ["Início do ensaio", fmtDataHora(e.inicio)],
     ["Fim do ensaio", fmtDataHora(e.fim)],
@@ -690,15 +702,17 @@ function renderComparar() {
 // Aba 4 — Visão geral
 // ============================================================================
 function renderGeral() {
+  recalcAuto();
+  renderAutoBox();
   const temAuto = Object.keys(classif).length > 0;
-  const head = `<tr><th>Ensaio</th><th>Motor</th><th>Observação</th><th>Início</th><th>Fim</th><th>Duração</th><th>Firmware</th><th>Leituras</th><th>Condições</th><th>Classificação</th>${temAuto ? "<th>Análise automática</th>" : ""}<th>Sentidos</th></tr>`;
+  const head = `<tr><th>Ensaio</th><th>Motor</th><th>Observação</th><th>Início</th><th>Fim</th><th>Duração</th><th>Firmware</th><th>Leituras</th><th>Condições</th><th>Classificação</th><th>Indicação automática</th>${temAuto ? "<th>Análise automática</th>" : ""}<th>Sentidos</th></tr>`;
   const body = ensaios.slice().reverse().map((e) => {
     const c = classif[e.id];
     const ra = resumoAssimetria(e.id);
     const st = c ? badge(c.status, STATUS_TXT[c.status] || c.status) : `<span class="muted">—</span>`;
     const as = ra.status === "SIM" ? badge("SIM", `⚠ ${ra.n} canais @ ${freqLabel(ra.f)}`) : ra.status === "NAO" ? badge("NAO", "Equivalentes") : badge("NA", "Incompleto");
     const m = motores[e.id];
-    return `<tr><td>Ensaio ${e.id}</td><td>${m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'}</td><td class="obs">${m && m.obs ? esc(m.obs) : ""}</td><td>${fmtDataHora(e.inicio)}</td><td>${fmtDataHora(e.fim)}</td><td>${fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)}</td><td>${e.firmware || "—"}</td><td>${e.n}</td><td>${e.condicoes.length}/4</td><td>${classeBadge(m && m.classe)}</td>${temAuto ? `<td>${st}</td>` : ""}<td>${as}</td></tr>`;
+    return `<tr><td>Ensaio ${e.id}</td><td>${m ? esc(m.motor) : '<span class="muted">não cadastrado</span>'}</td><td class="obs">${m && m.obs ? esc(m.obs) : ""}</td><td>${fmtDataHora(e.inicio)}</td><td>${fmtDataHora(e.fim)}</td><td>${fmtDuracao(e.inicio && e.fim ? (e.fim - e.inicio) / 1000 : NaN)}</td><td>${e.firmware || "—"}</td><td>${e.n}</td><td>${e.condicoes.length}/4</td><td>${classeBadge(m && m.classe)}</td><td>${autoBadge(e.id)}${autoDiverge(e.id) ? ' <span class="muted small">≠ inspeção</span>' : ""}</td>${temAuto ? `<td>${st}</td>` : ""}<td>${as}</td></tr>`;
   }).join("");
   document.getElementById("geralTable").innerHTML = head + body;
 
@@ -777,6 +791,113 @@ function showEmpty(html) {
 }
 
 // ============================================================================
+// Indicação automática — regra aprendida, ao vivo, com os motores APROVADOS
+// ============================================================================
+// Mesma regra de scripts/discriminantes.py. Para cada ensaio calcula 4
+// indicadores (média das condições disponíveis). Os limites são média + 3σ
+// dos motores classificados como Aprovado na aba MOTORES, recalculados a cada
+// carga: cada motor novo classificado melhora o modelo sem mexer no código.
+// Qualquer indicador acima do limite = "tende a reprovado".
+const AUTO = { MIN_APROVADOS: 5, N_SIGMA: 3 };
+const IND_REGRA = [
+  { key: "audio_nivel_db", nome: "Nível de áudio", curto: "áudio alto", un: "dBFS", d: 1 },
+  { key: "audio_instab_db", nome: "Instabilidade do áudio", curto: "áudio instável", un: "dB", d: 2 },
+  { key: "vib_dinamica_g", nome: "Vibração dinâmica", curto: "vibração", un: "g", d: 3 },
+  { key: "vib_lateral_y_g", nome: "Vibração lateral Y", curto: "vibração lateral", un: "g", d: 3 },
+];
+let indicadores = {};   // ensaio -> {audio_nivel_db, ..., ncond}
+let auto = null;        // resultado do modelo atual
+
+const mediaFinita = (v) => { const c = v.filter(Number.isFinite); return c.length ? c.reduce((a, b) => a + b, 0) / c.length : NaN; };
+const desvioFinito = (v) => { const c = v.filter(Number.isFinite); if (c.length < 2) return NaN; const m = mediaFinita(c); return Math.sqrt(c.reduce((a, b) => a + (b - m) ** 2, 0) / (c.length - 1)); };
+
+function calcIndicadores() {
+  indicadores = {};
+  ensaios.forEach((e) => {
+    const p = { audio_nivel_db: [], audio_instab_db: [], vib_dinamica_g: [], vib_lateral_y_g: [] };
+    let ncond = 0;
+    CONDICOES.forEach(({ s, f }) => {
+      const st = condStats[`${e.id}|${s}|${f}`];
+      if (!st) return;
+      ncond++;
+      p.audio_nivel_db.push(mediaFinita([st.audio1_dbfs.mean, st.audio2_dbfs.mean]));
+      p.audio_instab_db.push(mediaFinita([st.audio1_dbfs.std, st.audio2_dbfs.std]));
+      p.vib_dinamica_g.push(st.accel_resultante_g.std);
+      p.vib_lateral_y_g.push(st.accel_y_g.mean);
+    });
+    const r = { ncond };
+    IND_REGRA.forEach(({ key }) => (r[key] = mediaFinita(p[key])));
+    indicadores[e.id] = r;
+  });
+}
+
+function limitesDe(ids) {
+  const lim = {};
+  IND_REGRA.forEach(({ key }) => {
+    const v = ids.map((id) => indicadores[id][key]);
+    lim[key] = mediaFinita(v) + AUTO.N_SIGMA * desvioFinito(v);
+  });
+  return lim;
+}
+const bandeirasDe = (ind, lim) => IND_REGRA.filter(({ key }) => Number.isFinite(ind[key]) && ind[key] > lim[key]).map((i) => i.key);
+const completo = (id) => indicadores[id] && indicadores[id].ncond === 4 && IND_REGRA.every(({ key }) => Number.isFinite(indicadores[id][key]));
+
+function recalcAuto() {
+  calcIndicadores();
+  const comClasse = (k) => ensaios.map((e) => e.id).filter((id) => classeDe(id) === k && completo(id));
+  const aprov = comClasse("APROVADO"), reprov = comClasse("REPROVADO");
+  auto = { nAprov: aprov.length, nReprov: reprov.length, ok: aprov.length >= AUTO.MIN_APROVADOS, por: {} };
+  if (!auto.ok) return;
+  auto.lim = limitesDe(aprov);
+  ensaios.forEach((e) => {
+    if (!completo(e.id)) { auto.por[e.id] = { status: "INCOMPLETO", flags: [] }; return; }
+    // Um motor aprovado não entra no cálculo do próprio limite.
+    const lim = aprov.includes(e.id) ? limitesDe(aprov.filter((x) => x !== e.id)) : auto.lim;
+    const flags = bandeirasDe(indicadores[e.id], lim);
+    auto.por[e.id] = { status: flags.length ? "REPROVADO" : "APROVADO", flags };
+  });
+  // Concordância com a inspeção, deixando cada motor de fora do cálculo.
+  const avaliados = aprov.concat(reprov);
+  auto.avaliados = avaliados.length;
+  auto.acertos = avaliados.filter((id) => auto.por[id].status === classeDe(id)).length;
+  auto.divergentes = avaliados.filter((id) => auto.por[id].status !== classeDe(id));
+}
+
+function autoBadge(id) {
+  if (!auto || !auto.ok) return badge("NA", "Base insuficiente");
+  const r = auto.por[id];
+  if (!r || r.status === "INCOMPLETO") return badge("NA", "Ensaio incompleto");
+  if (r.status === "APROVADO") return badge("AUTO_OK", "Perfil de aprovado");
+  const nomes = r.flags.map((k) => IND_REGRA.find((i) => i.key === k).curto).join(", ");
+  return badge("AUTO_REP", `⚠ Tende a reprovado · ${esc(nomes)}`);
+}
+const autoDiverge = (id) => auto && auto.ok && auto.por[id] && ["APROVADO", "REPROVADO"].includes(classeDe(id))
+  && auto.por[id].status !== "INCOMPLETO" && auto.por[id].status !== classeDe(id);
+
+function renderAutoBox() {
+  const box = document.getElementById("autoBox");
+  if (!auto.ok) {
+    box.innerHTML = `<p class="sub">A indicação automática aprende com os motores classificados como <strong>Aprovado</strong> na aba MOTORES. É preciso ter pelo menos ${AUTO.MIN_APROVADOS} aprovados com as 4 condições completas (hoje: ${auto.nAprov}).</p>`;
+    return;
+  }
+  const div = auto.divergentes.length
+    ? `Divergem da inspeção: ${auto.divergentes.map((id) => `<strong>${esc(ensaioNome(id))}</strong> (inspeção: ${esc(motores[id].classe)})`).join("; ")}.`
+    : "Nenhum motor classificado diverge da inspeção.";
+  const linhas = IND_REGRA.map((i) => {
+    const vals = ensaios.map((e) => e.id).filter((id) => classeDe(id) === "APROVADO" && completo(id)).map((id) => indicadores[id][i.key]);
+    return `<tr><td>${i.nome}</td><td>${fmtNum(Math.min(...vals), i.d)} a ${fmtNum(Math.max(...vals), i.d)} ${i.un}</td><td class="flag">&gt; ${fmtNum(auto.lim[i.key], i.d)} ${i.un}</td></tr>`;
+  }).join("");
+  box.innerHTML = `
+    <div class="auto-sum">
+      <div><div class="k">Base de aprendizado</div><div class="v">${auto.nAprov} aprovados · ${auto.nReprov} reprovados</div></div>
+      <div><div class="k">Concordância com a inspeção</div><div class="v">${auto.acertos} de ${auto.avaliados}</div><div class="muted small">cada motor avaliado fora da base</div></div>
+    </div>
+    <p class="sub">${div}</p>
+    <div class="table-wrap"><table><tr><th>Indicador (média das 4 condições)</th><th>Faixa dos aprovados</th><th>Limite atual</th></tr>${linhas}</table></div>
+    <p class="sub muted">Os limites se recalculam sozinhos a cada atualização: quanto mais motores classificados, mais ajustados ficam. A indicação orienta a inspeção e não substitui a decisão do operador.</p>`;
+}
+
+// ============================================================================
 // Carregamento dos dados
 // ============================================================================
 // A aba DADOS é o que a página precisa para aparecer; MOTORES (Apps Script,
@@ -798,7 +919,8 @@ let carregando = false;
 let ultimaLeitura = null;
 
 function stampOk() {
-  setStamp(`Dados de ${ultimaLeitura} · ${ensaios.length} ensaio(s), ${rows.length} leituras`);
+  const origem = fonteFixa ? ` · fonte: ${fonteFixa.nome}` : "";
+  setStamp(`Dados de ${ultimaLeitura} · ${ensaios.length} ensaio(s), ${rows.length} leituras${origem}`);
 }
 
 // Mostra o dashboard na primeira vez que houver dados; nas seguintes, só
@@ -859,7 +981,7 @@ async function carregar() {
   const pararContador = appVisivel ? () => {} : contadorCarregando();
 
   const pMotores = loadMotores();
-  const pClassif = usandoExemplo ? Promise.resolve({}) : loadClassif();
+  const pClassif = fonteFixa ? Promise.resolve({}) : loadClassif();
   try {
     const r = await loadRows();
     if (!r.length) throw new Error("a planilha ainda não tem leituras válidas (com ensaio, sentido e frequência)");

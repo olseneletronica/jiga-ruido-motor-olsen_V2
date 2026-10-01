@@ -11,6 +11,8 @@ data/raw_ensaios.csv.
 Uso:
     python scripts/fetch_sheet.py              # planilha real
     python scripts/fetch_sheet.py --exemplo    # dados sintéticos de demonstração
+    python scripts/fetch_sheet.py --dados DADOS.tsv --motores MOTORES.tsv
+                                               # exportações da planilha (offline)
 """
 import argparse
 import io
@@ -18,11 +20,12 @@ import json
 import time
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 
 from config import (
-    DATA_DIR, EXEMPLO_MOTORES_TSV, EXEMPLO_TSV, EXPECTED_COLUMNS, LIVE_URL,
+    DATA_DIR, EXEMPLO_MOTORES_TSV, EXEMPLO_TSV, EXPECTED_COLUMNS, IMU_COLUMNS, LIVE_URL,
     MOTORES_API_URL, MOTORES_PATH, MOTORES_URL, NUMERIC_COLUMNS, RAW_PATH,
     normaliza_sentido,
 )
@@ -53,6 +56,12 @@ def parse_tabela(texto: str, sep: str) -> pd.DataFrame:
     for col in NUMERIC_COLUMNS:
         df[col] = _para_numero(df[col])
     df["sentido"] = df["sentido"].map(normaliza_sentido)
+
+    # IMU inteiro zerado = falha de leitura do sensor -> ausente (NaN).
+    falha_imu = (df[IMU_COLUMNS] == 0).all(axis=1)
+    df.loc[falha_imu, IMU_COLUMNS] = float("nan")
+    if falha_imu.any():
+        print(f"[fetch_sheet] {int(falha_imu.sum())} leituras com IMU zerado tratadas como ausentes")
 
     # Linhas sem ensaio/frequência/sentido não servem para nenhuma análise.
     df = df.dropna(subset=["ensaio", "frequencia_hz"])
@@ -89,15 +98,26 @@ def parse_motores(texto: str, sep: str) -> pd.DataFrame:
     return df.drop_duplicates("ensaio", keep="last")
 
 
+def _sep(caminho: Path) -> str:
+    """Exportação do Google: .tsv separa por tabulação, .csv por vírgula."""
+    return "\t" if caminho.suffix.lower() in (".tsv", ".txt") else ","
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exemplo", action="store_true",
                         help="Usa data/exemplo/raw_exemplo.tsv em vez da planilha")
+    parser.add_argument("--dados", type=Path,
+                        help="Arquivo exportado da aba DADOS (.tsv ou .csv) em vez da planilha")
+    parser.add_argument("--motores", type=Path,
+                        help="Arquivo exportado da aba MOTORES (.tsv ou .csv); usado com --dados")
     args = parser.parse_args()
-
     if args.exemplo:
-        df = parse_tabela(EXEMPLO_TSV.read_text(encoding="utf-8"), "\t")
-        origem = str(EXEMPLO_TSV)
+        args.dados, args.motores = EXEMPLO_TSV, EXEMPLO_MOTORES_TSV
+
+    if args.dados:
+        df = parse_tabela(args.dados.read_text(encoding="utf-8-sig"), _sep(args.dados))
+        origem = str(args.dados)
     else:
         df = parse_tabela(_baixa_texto(LIVE_URL), ",")
         origem = "planilha (aba DADOS, ao vivo)"
@@ -106,8 +126,10 @@ def main():
     df.to_csv(RAW_PATH, index=False)
 
     try:
-        if args.exemplo:
-            motores = parse_motores(EXEMPLO_MOTORES_TSV.read_text(encoding="utf-8"), "\t")
+        if args.dados:
+            if not args.motores:
+                raise ValueError("sem --motores")
+            motores = parse_motores(args.motores.read_text(encoding="utf-8-sig"), _sep(args.motores))
         else:
             try:
                 r = json.loads(_baixa_texto(MOTORES_API_URL))

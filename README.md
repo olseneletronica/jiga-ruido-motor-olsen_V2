@@ -126,10 +126,18 @@ scripts/
   sentido.py               comparação horário × anti-horário
   baseline.py              referência de motor bom por condição
   classify.py              status por ensaio (OK / ATENCAO / FALHA_PROVAVEL)
+  discriminantes.py        indicadores por motor, limites dos aprovados, validação
   gerar_dados_exemplo.py   dados sintéticos para demonstração
   run_pipeline.py          roda tudo em sequência
 data/
   exemplo/raw_exemplo.tsv  dados sintéticos (mesmo formato da planilha)
+  campanha_2026-10-01/     campanha de 30/09–01/10 CONGELADA (não muda com a planilha)
+    dados.tsv, motores.tsv     exportações das abas DADOS e MOTORES
+    indicadores_por_motor.csv  4 indicadores + corrente + indicação, por motor
+    limites_congelados.json    limites e validação desta campanha
+docs/
+  PONTO_DE_RETOMADA.md     estado consolidado do projeto e próximos passos
+  relatorio_criterios_2026-10-01.html  relatório final (abre no GitHub Pages)
 ```
 
 ## Dashboard
@@ -158,6 +166,11 @@ Python. Abas:
    classificação, resultado de sentido) e média de cada grandeza por
    ensaio/condição.
 
+**Campanha congelada:** `dashboard/?fonte=campanha_2026-10-01` mostra os 52
+ensaios de 30/09–01/10 a partir de `data/campanha_2026-10-01/`, sem ler a
+planilha (o rodapé indica a fonte; o cadastro fica bloqueado). Serve para
+voltar exatamente aos números do relatório final.
+
 **Modo demonstração:** `dashboard/?fonte=exemplo` usa
 `data/exemplo/raw_exemplo.tsv` (6 motores sintéticos: 1–4 bons, 5 com
 vibração/ruído maiores só no anti-horário a 20 kHz, 6 com falha geral). Se a
@@ -180,7 +193,17 @@ python scripts/run_pipeline.py --good 1 2 3
 
 # Com dados de exemplo
 python scripts/run_pipeline.py --exemplo --good 1 2 3 4
+
+# A partir de exportações da planilha (sem internet), ex.: campanha congelada
+python scripts/run_pipeline.py --dados data/campanha_2026-10-01/dados.tsv \
+    --motores data/campanha_2026-10-01/motores.tsv
+
+# Teste com motores novos: limites congelados nos ensaios 24 e 33
+python scripts/discriminantes.py --corte 24 33
 ```
+
+Para exportar: na planilha, aba DADOS → Arquivo → Fazer download → Valores
+separados por tabulação (.tsv); o mesmo para a aba MOTORES.
 
 Passo a passo equivalente:
 
@@ -194,6 +217,42 @@ python scripts/classify.py               # data/classificacao.csv
 
 Depois de gerar `data/classificacao.csv`, faça commit/push — o dashboard
 mostra a classificação ao lado de cada ensaio.
+
+## Grandezas que separam motor bom de ruim
+
+`scripts/discriminantes.py` compara os motores **Aprovados** e **Reprovados**
+da aba MOTORES e propõe limites a partir dos aprovados (média + 3σ). Resultado
+final da campanha (52 ensaios de 30/09 e 01/10/2026: 11 aprovados, 28
+reprovados, 13 em análise), na média das 4 condições:
+
+| Indicador | Aprovados | Limite proposto |
+|---|---|---|
+| Nível de áudio (média dos 2 mics) | −26,5 a −25,7 dBFS | > −25,4 dBFS |
+| Instabilidade do áudio (desvio no bloco) | 0,18 a 0,53 dB | > 0,59 dB |
+| Vibração dinâmica (desvio da resultante) | 0,019 a 0,085 g | > 0,122 g |
+| Vibração lateral Y (média) | 0,016 a 0,046 g | > 0,063 g |
+| Corrente média (só atenção, fora da regra) | 0,86 a 1,19 A | < 0,66 A |
+
+Regra "qualquer indicador acima do limite = reprovado":
+
+- Motores novos (limites congelados antes de cada lote): 17 de 21 corretos,
+  nenhum aprovado reprovado.
+- Base inteira, deixando um de fora: 33 de 39 (23 dos 28 reprovados).
+- Os reprovados 6, 27, 38, 41 e 52 não se distinguem dos aprovados em nenhuma
+  das 260 características medidas; modelos de ML (regressão logística, random
+  forest, SVM) acertam menos que a regra. O defeito deles não aparece nos
+  sensores atuais (próximo passo sugerido: espectro do áudio em bandas).
+
+**No dashboard, ao vivo:** a aba Visão geral tem a seção *Indicação automática*,
+que aplica essa mesma regra a cada **⟳ Atualizar dados**, aprendendo os limites
+com os motores classificados como Aprovado (mínimo 5, com as 4 condições).
+Cada ensaio recebe "Perfil de aprovado" ou "Tende a reprovado" (com o indicador
+que estourou), e os motores em que a indicação diverge da inspeção são
+marcados com "≠ inspeção". A concordância é medida deixando cada motor de fora
+do cálculo do próprio limite.
+
+Leituras em que o IMU vem **todo zerado** (falha de leitura do sensor, ~4%
+no firmware V0.04) são tratadas como ausentes no pipeline e no dashboard.
 
 ## Como funciona a análise
 

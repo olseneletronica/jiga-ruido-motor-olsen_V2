@@ -23,8 +23,12 @@ Google Sheets publicado, e pipeline Python para classificação.
   acelerômetro contém a gravidade).
 - Classificação é estatística (z-score contra motores bons), sem rótulos de
   falha confirmados ainda.
-- `dashboard/?fonte=exemplo` usa `data/exemplo/raw_exemplo.tsv`
-  (gerado por `scripts/gerar_dados_exemplo.py`).
+- `dashboard/?fonte=<nome>` lê arquivos fixos (`CONFIG.FONTES` em app.js):
+  `exemplo` (sintético, `scripts/gerar_dados_exemplo.py`) e
+  `campanha_2026-10-01` (exportação congelada da campanha final).
+- Ponto de retomada: `docs/PONTO_DE_RETOMADA.md` + tag git
+  `v2.0-consolidado`. `data/campanha_2026-10-01/` nunca é editada; nova
+  campanha = nova pasta. Pipeline roda offline com `--dados/--motores`.
 - GitHub Pages serve a raiz do repo; `index.html` da raiz redireciona para
   `dashboard/`. O dashboard lê `../data/classificacao.csv` (opcional).
 - Repo público (plano Free do GitHub — privado quebraria o Pages).
@@ -50,3 +54,18 @@ Google Sheets publicado, e pipeline Python para classificação.
   MOTORES (Apps Script, pode demorar "acordando") entra depois via
   `aplicarMotores()`. Tempos-limite: DADOS 30 s, Apps Script 12 s (cai no
   gviz), gviz MOTORES 15 s. Cliques durante uma carga são ignorados.
+- IMU todo zerado numa leitura = falha do sensor -> NaN (`IMU_COLUMNS` em
+  config.py, `IMU_KEYS` em app.js).
+- `scripts/discriminantes.py`: indicadores por motor (média das 4 condições),
+  limites = média + 3σ dos APROVADOS, validação deixando um de fora. Resultado
+  final (52 ensaios, 01/10/2026): áudio (nível e instabilidade) e vibração
+  (dinâmica e lateral Y) separam; 33/39 deixando um de fora, 17/21 em motores
+  novos. Reprovados 6, 27, 38, 41, 52 são invisíveis aos sensores (nenhuma de
+  260 características separa; ML pior que a regra). Corrente menor nos
+  reprovados (só atenção); tensão só espelha corrente.
+- Indicação automática ao vivo no dashboard (`recalcAuto()` em app.js): mesmos
+  4 indicadores e limites (média + 3σ dos APROVADOS) de discriminantes.py,
+  recalculados a cada carga; aprovado não entra no próprio limite. Validado:
+  com os dados de 30/09 reproduz 16/18 e os limites do script Python.
+- O ambiente do Claude não acessa docs.google.com nem script.google.com:
+  para reanalisar, o usuário exporta a aba DADOS/MOTORES ou usa o dashboard.
